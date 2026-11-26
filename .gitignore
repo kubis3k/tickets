@@ -1,0 +1,27 @@
+# deps / build
+node_modules/
+.next/
+out/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+next-env.d.ts
+
+# env — NIKDY necommitovat
+.env
+.env.*
+!.env.example
+
+# Vercel / Supabase
+.vercel/
+supabase/.temp/
+
+# Claude Code
+.claude/state/token-log/*
+!.claude/state/token-log/.gitkeep
+.claude/settings.local.json
+
+# OS
+.DS_Store
