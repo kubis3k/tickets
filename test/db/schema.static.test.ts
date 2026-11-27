@@ -15,7 +15,7 @@ const PK_EXCEPTIONS: Record<string, string> = {
   invoice_sequences: "složený PK (organization_id, year)",
 };
 
-const MONEY_NAME = /(^|_)(amount|price|total|subtotal|discount|gross|rounding|fee|fee_base|fee_fixed|vat_amount|unit_price)$/;
+const MONEY_NAME = /(^|_)(amount|price|total|subtotal|discount|gross|rounding|fee|fees|refunds|fee_base|fee_fixed|vat_amount|unit_price)$/;
 const BPS_NAME = /_bps$/;
 const FORBIDDEN_TYPES = ["PgReal", "PgDoublePrecision", "PgNumeric", "PgNumericNumber", "PgNumericBigInt", "PgNumericString", "PgDecimal"];
 
@@ -25,9 +25,9 @@ describe("DB schema – statické invarianty", () => {
     expect(names).toEqual(
       [
         "abandoned_checkouts", "audit_log", "checkins", "customers", "door_assignments",
-        "events", "inventory", "invitations", "invoice_sequences", "invoices", "jobs",
+        "events", "inventory", "invitations", "invoice_lines", "invoice_sequences", "invoices", "jobs",
         "memberships", "order_items", "orders", "organizations", "platform_admins",
-        "price_waves", "promo_codes", "reservations", "settlements", "stripe_events",
+        "price_waves", "promo_codes", "refunds", "reservations", "settlements", "stripe_events",
         "ticket_transfers", "ticket_types", "tickets", "users", "venues",
       ].sort(),
     );
@@ -54,9 +54,19 @@ describe("DB schema – statické invarianty", () => {
         }
       });
 
-      it("peněžní sloupce jsou integer, procenta jsou integer bps", () => {
-        for (const c of cfg.columns.filter((c) => MONEY_NAME.test(c.name) || BPS_NAME.test(c.name))) {
+      it("peněžní sloupce jsou integer|bigint, procenta jsou integer bps", () => {
+        for (const c of cfg.columns.filter((c) => MONEY_NAME.test(c.name))) {
+          expect(["integer", "bigint"], `${cfg.name}.${c.name}`).toContain(c.getSQLType());
+        }
+        for (const c of cfg.columns.filter((c) => BPS_NAME.test(c.name))) {
           expect(c.getSQLType(), `${cfg.name}.${c.name}`).toBe("integer");
+        }
+      });
+
+      it("bigint je jen mode number a jen v settlements", () => {
+        for (const c of cfg.columns.filter((c) => c.getSQLType() === "bigint")) {
+          expect(cfg.name, `${cfg.name}.${c.name}`).toBe("settlements");
+          expect(c.columnType, `${cfg.name}.${c.name}`).toBe("PgBigInt53");
         }
       });
 

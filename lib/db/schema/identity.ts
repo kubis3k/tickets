@@ -7,6 +7,7 @@ import {
   pgTable,
   primaryKey,
   text,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { authUsers } from "./auth";
@@ -14,14 +15,19 @@ import { createdAt, tstz, updatedAt } from "./_helpers";
 import { orgRole } from "./enums";
 
 /** Admin/staff/door účty. `id` = `auth.users.id`. */
-export const users = pgTable("users", {
-  id: uuid("id")
-    .primaryKey()
-    .references(() => authUsers.id, { onDelete: "cascade" }),
-  email: text("email").notNull().unique(),
-  name: text("name"),
-  createdAt: createdAt(),
-}).enableRLS();
+export const users = pgTable(
+  "users",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    /** vždy lower-case (CHECK) */
+    email: text("email").notNull().unique(),
+    name: text("name"),
+    createdAt: createdAt(),
+  },
+  (t) => [check("users_email_lower", sql`${t.email} = lower(${t.email})`)],
+).enableRLS();
 
 export const platformAdmins = pgTable("platform_admins", {
   userId: uuid("user_id")
@@ -110,6 +116,10 @@ export const invitations = pgTable(
     check("invitations_email_lower", sql`${t.email} = lower(${t.email})`),
     index("invitations_organization_id_idx").on(t.organizationId),
     index("invitations_email_idx").on(t.email),
+    // max. jedna aktivní pozvánka na (org, e-mail)
+    uniqueIndex("invitations_org_email_active_uq")
+      .on(t.organizationId, t.email)
+      .where(sql`${t.acceptedAt} IS NULL AND ${t.revokedAt} IS NULL`),
   ],
 ).enableRLS();
 

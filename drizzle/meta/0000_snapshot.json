@@ -1,5 +1,5 @@
 {
-  "id": "95884735-ef58-4100-b190-0c09bd31f001",
+  "id": "7b77087d-a19d-474b-b3fe-d901f717d215",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -202,6 +202,28 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "invitations_org_email_active_uq": {
+          "name": "invitations_org_email_active_uq",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"invitations\".\"accepted_at\" IS NULL AND \"invitations\".\"revoked_at\" IS NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -644,7 +666,12 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "users_email_lower": {
+          "name": "users_email_lower",
+          "value": "\"users\".\"email\" = lower(\"users\".\"email\")"
+        }
+      },
       "isRLSEnabled": true
     },
     "public.door_assignments": {
@@ -941,7 +968,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "events_id_organization_id_uq": {
+          "name": "events_id_organization_id_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "organization_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "events_total_capacity_nonneg": {
@@ -1072,6 +1108,13 @@
           "notNull": true,
           "default": 0
         },
+        "reserved_count": {
+          "name": "reserved_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1122,7 +1165,7 @@
         },
         "price_waves_sold_within_capacity": {
           "name": "price_waves_sold_within_capacity",
-          "value": "\"price_waves\".\"sold_count\" >= 0 AND (\"price_waves\".\"capacity\" IS NULL OR \"price_waves\".\"sold_count\" <= \"price_waves\".\"capacity\")"
+          "value": "\"price_waves\".\"sold_count\" >= 0 AND \"price_waves\".\"reserved_count\" >= 0 AND (\"price_waves\".\"capacity\" IS NULL OR \"price_waves\".\"sold_count\" + \"price_waves\".\"reserved_count\" <= \"price_waves\".\"capacity\")"
         }
       },
       "isRLSEnabled": true
@@ -1140,6 +1183,12 @@
         },
         "event_id": {
           "name": "event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -1239,18 +1288,35 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "promo_codes_organization_id_idx": {
+          "name": "promo_codes_organization_id_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
-        "promo_codes_event_id_events_id_fk": {
-          "name": "promo_codes_event_id_events_id_fk",
+        "promo_codes_event_org_fk": {
+          "name": "promo_codes_event_org_fk",
           "tableFrom": "promo_codes",
           "tableTo": "events",
           "columnsFrom": [
-            "event_id"
+            "event_id",
+            "organization_id"
           ],
           "columnsTo": [
-            "id"
+            "id",
+            "organization_id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
@@ -1260,6 +1326,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "promo_codes_used_within_max": {
+          "name": "promo_codes_used_within_max",
+          "value": "\"promo_codes\".\"max_uses\" IS NULL OR \"promo_codes\".\"used_count\" <= \"promo_codes\".\"max_uses\""
+        },
         "promo_codes_value_valid": {
           "name": "promo_codes_value_valid",
           "value": "(\"promo_codes\".\"type\" = 'percent' AND \"promo_codes\".\"value\" > 0 AND \"promo_codes\".\"value\" <= 10000) OR (\"promo_codes\".\"type\" = 'fixed' AND \"promo_codes\".\"value\" > 0)"
@@ -1293,6 +1363,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "promo_code_id": {
+          "name": "promo_code_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         },
         "items": {
           "name": "items",
@@ -1328,6 +1404,21 @@
           "columns": [
             {
               "expression": "event_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "reservations_promo_code_id_idx": {
+          "name": "reservations_promo_code_id_idx",
+          "columns": [
+            {
+              "expression": "promo_code_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1388,6 +1479,19 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "reservations_promo_code_id_promo_codes_id_fk": {
+          "name": "reservations_promo_code_id_promo_codes_id_fk",
+          "tableFrom": "reservations",
+          "tableTo": "promo_codes",
+          "columnsFrom": [
+            "promo_code_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1409,6 +1513,12 @@
         },
         "event_id": {
           "name": "event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -1476,18 +1586,35 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "ticket_types_organization_id_idx": {
+          "name": "ticket_types_organization_id_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
-        "ticket_types_event_id_events_id_fk": {
-          "name": "ticket_types_event_id_events_id_fk",
+        "ticket_types_event_org_fk": {
+          "name": "ticket_types_event_org_fk",
           "tableFrom": "ticket_types",
           "tableTo": "events",
           "columnsFrom": [
-            "event_id"
+            "event_id",
+            "organization_id"
           ],
           "columnsTo": [
-            "id"
+            "id",
+            "organization_id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
@@ -1627,6 +1754,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
         "emails_sent": {
           "name": "emails_sent",
           "type": "integer",
@@ -1709,7 +1848,15 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "abandoned_checkouts_token_hash_unique": {
+          "name": "abandoned_checkouts_token_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_hash"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "abandoned_checkouts_emails_sent_nonneg": {
@@ -1732,6 +1879,24 @@
         },
         "ticket_id": {
           "name": "ticket_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scanned_by": {
+          "name": "scanned_by",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -1763,6 +1928,51 @@
         }
       },
       "indexes": {
+        "checkins_event_id_idx": {
+          "name": "checkins_event_id_idx",
+          "columns": [
+            {
+              "expression": "event_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "checkins_organization_id_idx": {
+          "name": "checkins_organization_id_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "checkins_scanned_by_idx": {
+          "name": "checkins_scanned_by_idx",
+          "columns": [
+            {
+              "expression": "scanned_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "checkins_ticket_id_idx": {
           "name": "checkins_ticket_id_idx",
           "columns": [
@@ -1795,15 +2005,45 @@
         }
       },
       "foreignKeys": {
-        "checkins_ticket_id_tickets_id_fk": {
-          "name": "checkins_ticket_id_tickets_id_fk",
+        "checkins_scanned_by_users_id_fk": {
+          "name": "checkins_scanned_by_users_id_fk",
           "tableFrom": "checkins",
-          "tableTo": "tickets",
+          "tableTo": "users",
           "columnsFrom": [
-            "ticket_id"
+            "scanned_by"
           ],
           "columnsTo": [
             "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "checkins_event_org_fk": {
+          "name": "checkins_event_org_fk",
+          "tableFrom": "checkins",
+          "tableTo": "events",
+          "columnsFrom": [
+            "event_id",
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "checkins_ticket_event_fk": {
+          "name": "checkins_ticket_event_fk",
+          "tableFrom": "checkins",
+          "tableTo": "tickets",
+          "columnsFrom": [
+            "ticket_id",
+            "event_id"
+          ],
+          "columnsTo": [
+            "id",
+            "event_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -2006,6 +2246,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "reservation_id": {
+          "name": "reservation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "promo_code_id": {
           "name": "promo_code_id",
           "type": "uuid",
@@ -2088,6 +2334,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "refunded_amount": {
+          "name": "refunded_amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
         "application_fee": {
           "name": "application_fee",
           "type": "integer",
@@ -2140,6 +2393,21 @@
         }
       },
       "indexes": {
+        "orders_reservation_id_idx": {
+          "name": "orders_reservation_id_idx",
+          "columns": [
+            {
+              "expression": "reservation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "orders_organization_id_idx": {
           "name": "orders_organization_id_idx",
           "columns": [
@@ -2200,21 +2468,6 @@
           "method": "btree",
           "with": {}
         },
-        "orders_stripe_payment_intent_idx": {
-          "name": "orders_stripe_payment_intent_idx",
-          "columns": [
-            {
-              "expression": "stripe_payment_intent",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "orders_email_idx": {
           "name": "orders_email_idx",
           "columns": [
@@ -2245,19 +2498,6 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "orders_event_id_events_id_fk": {
-          "name": "orders_event_id_events_id_fk",
-          "tableFrom": "orders",
-          "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "orders_customer_id_customers_id_fk": {
           "name": "orders_customer_id_customers_id_fk",
           "tableFrom": "orders",
@@ -2269,6 +2509,19 @@
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "orders_reservation_id_reservations_id_fk": {
+          "name": "orders_reservation_id_reservations_id_fk",
+          "tableFrom": "orders",
+          "tableTo": "reservations",
+          "columnsFrom": [
+            "reservation_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "orders_promo_code_id_promo_codes_id_fk": {
@@ -2283,6 +2536,21 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
+        },
+        "orders_event_org_fk": {
+          "name": "orders_event_org_fk",
+          "tableFrom": "orders",
+          "tableTo": "events",
+          "columnsFrom": [
+            "event_id",
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2293,10 +2561,41 @@
           "columns": [
             "stripe_session_id"
           ]
+        },
+        "orders_stripe_payment_intent_unique": {
+          "name": "orders_stripe_payment_intent_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "stripe_payment_intent"
+          ]
+        },
+        "orders_id_event_id_uq": {
+          "name": "orders_id_event_id_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "event_id"
+          ]
+        },
+        "orders_id_organization_id_uq": {
+          "name": "orders_id_organization_id_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "organization_id"
+          ]
         }
       },
       "policies": {},
       "checkConstraints": {
+        "orders_currency_czk": {
+          "name": "orders_currency_czk",
+          "value": "\"orders\".\"currency\" = 'CZK'"
+        },
+        "orders_refunded_amount_range": {
+          "name": "orders_refunded_amount_range",
+          "value": "\"orders\".\"refunded_amount\" >= 0 AND \"orders\".\"refunded_amount\" <= \"orders\".\"total\""
+        },
         "orders_amounts_valid": {
           "name": "orders_amounts_valid",
           "value": "\"orders\".\"subtotal\" >= 0 AND \"orders\".\"discount\" >= 0 AND \"orders\".\"discount\" <= \"orders\".\"subtotal\" AND \"orders\".\"total\" = \"orders\".\"subtotal\" - \"orders\".\"discount\""
@@ -2446,6 +2745,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "order_item_id": {
+          "name": "order_item_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "ticket_type_id": {
           "name": "ticket_type_id",
           "type": "uuid",
@@ -2457,6 +2762,19 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qr_version": {
+          "name": "qr_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
         },
         "holder_name": {
           "name": "holder_name",
@@ -2505,6 +2823,36 @@
         }
       },
       "indexes": {
+        "tickets_order_item_id_idx": {
+          "name": "tickets_order_item_id_idx",
+          "columns": [
+            {
+              "expression": "order_item_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "tickets_organization_id_idx": {
+          "name": "tickets_organization_id_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "tickets_order_id_idx": {
           "name": "tickets_order_id_idx",
           "columns": [
@@ -2567,17 +2915,17 @@
         }
       },
       "foreignKeys": {
-        "tickets_order_id_orders_id_fk": {
-          "name": "tickets_order_id_orders_id_fk",
+        "tickets_order_item_id_order_items_id_fk": {
+          "name": "tickets_order_item_id_order_items_id_fk",
           "tableFrom": "tickets",
-          "tableTo": "orders",
+          "tableTo": "order_items",
           "columnsFrom": [
-            "order_id"
+            "order_item_id"
           ],
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "no action",
           "onUpdate": "no action"
         },
         "tickets_ticket_type_id_ticket_types_id_fk": {
@@ -2586,19 +2934,6 @@
           "tableTo": "ticket_types",
           "columnsFrom": [
             "ticket_type_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "tickets_event_id_events_id_fk": {
-          "name": "tickets_event_id_events_id_fk",
-          "tableFrom": "tickets",
-          "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
           ],
           "columnsTo": [
             "id"
@@ -2618,6 +2953,36 @@
           ],
           "onDelete": "set null",
           "onUpdate": "no action"
+        },
+        "tickets_order_event_fk": {
+          "name": "tickets_order_event_fk",
+          "tableFrom": "tickets",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "order_id",
+            "event_id"
+          ],
+          "columnsTo": [
+            "id",
+            "event_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "tickets_event_org_fk": {
+          "name": "tickets_event_org_fk",
+          "tableFrom": "tickets",
+          "tableTo": "events",
+          "columnsFrom": [
+            "event_id",
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2628,10 +2993,154 @@
           "columns": [
             "code"
           ]
+        },
+        "tickets_id_event_id_uq": {
+          "name": "tickets_id_event_id_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "event_id"
+          ]
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "tickets_code_min_length": {
+          "name": "tickets_code_min_length",
+          "value": "char_length(\"tickets\".\"code\") >= 16"
+        },
+        "tickets_qr_version_pos": {
+          "name": "tickets_qr_version_pos",
+          "value": "\"tickets\".\"qr_version\" >= 1"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.invoice_lines": {
+      "name": "invoice_lines",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "invoice_id": {
+          "name": "invoice_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit_price": {
+          "name": "unit_price",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_rate_bps": {
+          "name": "vat_rate_bps",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "base_amount": {
+          "name": "base_amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_amount": {
+          "name": "vat_amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_amount": {
+          "name": "total_amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "invoice_lines_invoice_id_position_uq": {
+          "name": "invoice_lines_invoice_id_position_uq",
+          "columns": [
+            {
+              "expression": "invoice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "invoice_lines_invoice_id_invoices_id_fk": {
+          "name": "invoice_lines_invoice_id_invoices_id_fk",
+          "tableFrom": "invoice_lines",
+          "tableTo": "invoices",
+          "columnsFrom": [
+            "invoice_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "invoice_lines_position_pos": {
+          "name": "invoice_lines_position_pos",
+          "value": "\"invoice_lines\".\"position\" > 0"
+        },
+        "invoice_lines_quantity_pos": {
+          "name": "invoice_lines_quantity_pos",
+          "value": "\"invoice_lines\".\"quantity\" > 0"
+        },
+        "invoice_lines_vat_rate_bps_range": {
+          "name": "invoice_lines_vat_rate_bps_range",
+          "value": "\"invoice_lines\".\"vat_rate_bps\" >= 0 AND \"invoice_lines\".\"vat_rate_bps\" <= 10000"
+        },
+        "invoice_lines_total_sum": {
+          "name": "invoice_lines_total_sum",
+          "value": "\"invoice_lines\".\"total_amount\" = \"invoice_lines\".\"base_amount\" + \"invoice_lines\".\"vat_amount\""
+        }
+      },
       "isRLSEnabled": true
     },
     "public.invoice_sequences": {
@@ -2710,6 +3219,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "recipient_organization_id": {
+          "name": "recipient_organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "order_id": {
           "name": "order_id",
           "type": "uuid",
@@ -2749,6 +3264,12 @@
         },
         "totals": {
           "name": "totals",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issuer_snapshot": {
+          "name": "issuer_snapshot",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
@@ -2813,6 +3334,37 @@
           "method": "btree",
           "with": {}
         },
+        "invoices_recipient_organization_id_idx": {
+          "name": "invoices_recipient_organization_id_idx",
+          "columns": [
+            {
+              "expression": "recipient_organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "invoices_order_id_invoice_uq": {
+          "name": "invoices_order_id_invoice_uq",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"invoices\".\"type\" = 'invoice'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "invoices_credit_for_invoice_id_idx": {
           "name": "invoices_credit_for_invoice_id_idx",
           "columns": [
@@ -2836,6 +3388,19 @@
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "invoices_recipient_organization_id_organizations_id_fk": {
+          "name": "invoices_recipient_organization_id_organizations_id_fk",
+          "tableFrom": "invoices",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "recipient_organization_id"
           ],
           "columnsTo": [
             "id"
@@ -2873,7 +3438,187 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "invoices_credit_note_has_original": {
+          "name": "invoices_credit_note_has_original",
+          "value": "\"invoices\".\"type\" <> 'credit_note' OR \"invoices\".\"credit_for_invoice_id\" IS NOT NULL"
+        },
+        "invoices_invoice_has_order": {
+          "name": "invoices_invoice_has_order",
+          "value": "\"invoices\".\"type\" <> 'invoice' OR \"invoices\".\"order_id\" IS NOT NULL"
+        },
+        "invoices_commission_has_recipient": {
+          "name": "invoices_commission_has_recipient",
+          "value": "\"invoices\".\"type\" <> 'commission_invoice' OR \"invoices\".\"recipient_organization_id\" IS NOT NULL"
+        }
+      },
+      "isRLSEnabled": true
+    },
+    "public.refunds": {
+      "name": "refunds",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stripe_refund_id": {
+          "name": "stripe_refund_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "application_fee_refunded": {
+          "name": "application_fee_refunded",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "credit_note_id": {
+          "name": "credit_note_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "refunds_organization_id_idx": {
+          "name": "refunds_organization_id_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refunds_order_id_idx": {
+          "name": "refunds_order_id_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "refunds_organization_id_organizations_id_fk": {
+          "name": "refunds_organization_id_organizations_id_fk",
+          "tableFrom": "refunds",
+          "tableTo": "organizations",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "refunds_credit_note_id_invoices_id_fk": {
+          "name": "refunds_credit_note_id_invoices_id_fk",
+          "tableFrom": "refunds",
+          "tableTo": "invoices",
+          "columnsFrom": [
+            "credit_note_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "refunds_order_org_fk": {
+          "name": "refunds_order_org_fk",
+          "tableFrom": "refunds",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "order_id",
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "refunds_stripe_refund_id_unique": {
+          "name": "refunds_stripe_refund_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "stripe_refund_id"
+          ]
+        },
+        "refunds_credit_note_id_unique": {
+          "name": "refunds_credit_note_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "credit_note_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "refunds_amount_pos": {
+          "name": "refunds_amount_pos",
+          "value": "\"refunds\".\"amount\" > 0"
+        },
+        "refunds_fee_nonneg": {
+          "name": "refunds_fee_nonneg",
+          "value": "\"refunds\".\"application_fee_refunded\" >= 0"
+        }
+      },
       "isRLSEnabled": true
     },
     "public.settlements": {
@@ -2901,35 +3646,49 @@
         },
         "gross": {
           "name": "gross",
-          "type": "integer",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "refunds": {
+          "name": "refunds",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "stripe_fees": {
+          "name": "stripe_fees",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
         "fee_base": {
           "name": "fee_base",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
         "fee_vat": {
           "name": "fee_vat",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
         "payout_amount": {
           "name": "payout_amount",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
         "rounding": {
           "name": "rounding",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
@@ -3023,32 +3782,6 @@
         }
       },
       "foreignKeys": {
-        "settlements_event_id_events_id_fk": {
-          "name": "settlements_event_id_events_id_fk",
-          "tableFrom": "settlements",
-          "tableTo": "events",
-          "columnsFrom": [
-            "event_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "settlements_organization_id_organizations_id_fk": {
-          "name": "settlements_organization_id_organizations_id_fk",
-          "tableFrom": "settlements",
-          "tableTo": "organizations",
-          "columnsFrom": [
-            "organization_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "settlements_commission_invoice_id_invoices_id_fk": {
           "name": "settlements_commission_invoice_id_invoices_id_fk",
           "tableFrom": "settlements",
@@ -3061,10 +3794,33 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "settlements_event_org_fk": {
+          "name": "settlements_event_org_fk",
+          "tableFrom": "settlements",
+          "tableTo": "events",
+          "columnsFrom": [
+            "event_id",
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "settlements_stripe_payout_id_unique": {
+          "name": "settlements_stripe_payout_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "stripe_payout_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": true
