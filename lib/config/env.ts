@@ -5,16 +5,27 @@ import { parseEnv, skipValidation, type EnvSource } from "./env.shared";
 export { EnvValidationError } from "./env.shared";
 export { clientEnv, getClientEnv, type ClientEnv } from "./env.client";
 
-const serverSchema = z.object({
-  DATABASE_URL: z.string().min(1),
-  DIRECT_URL: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  RESEND_API_KEY: z.string().min(1),
-  EMAIL_FROM: z.string().min(1),
-  EMAIL_DRIVER: z.enum(["resend", "outbox"]).default("resend"),
-  PLATFORM_ADMIN_EMAIL: z.string().email(),
-  SEED_ADMIN_PASSWORD: z.string().min(1).optional(),
-});
+const serverSchema = z
+  .object({
+    DATABASE_URL: z.string().min(1),
+    DIRECT_URL: z.string().min(1),
+    SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+    RESEND_API_KEY: z.string().min(1),
+    EMAIL_FROM: z.string().min(1),
+    EMAIL_DRIVER: z.enum(["resend", "outbox"]).default("resend"),
+    PLATFORM_ADMIN_EMAIL: z.string().email(),
+    SEED_ADMIN_PASSWORD: z.string().min(1).optional(),
+    VERCEL_ENV: z.string().optional(),
+  })
+  .superRefine((env, ctx) => {
+    if (env.VERCEL_ENV === "production" && env.EMAIL_DRIVER === "outbox") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["EMAIL_DRIVER"],
+        message: "EMAIL_DRIVER=outbox není povolen v produkci",
+      });
+    }
+  });
 
 export type ServerEnv = z.infer<typeof serverSchema>;
 

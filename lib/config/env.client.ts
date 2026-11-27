@@ -20,6 +20,9 @@ export function getClientEnv(source?: EnvSource): ClientEnv {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     SKIP_ENV_VALIDATION: process.env.SKIP_ENV_VALIDATION,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    NODE_ENV: process.env.NODE_ENV,
+    NEXT_PHASE: process.env.NEXT_PHASE,
   };
   const env = skipValidation(src) ? (src as unknown as ClientEnv) : parseEnv(clientSchema, src);
   clientCache = env;
@@ -28,7 +31,11 @@ export function getClientEnv(source?: EnvSource): ClientEnv {
 
 /** Lazy přístup (parse při prvním čtení, cache). */
 export const clientEnv: ClientEnv = new Proxy({} as ClientEnv, {
-  get: (_t, key: string) => getClientEnv()[key as keyof ClientEnv],
+  get: (_t, key) => {
+    // Nestringové klíče a thenable/React probe nespouští validaci.
+    if (typeof key !== "string" || key === "$$typeof" || key === "then") return undefined;
+    return getClientEnv()[key as keyof ClientEnv];
+  },
 });
 
 /** Pouze pro testy. */

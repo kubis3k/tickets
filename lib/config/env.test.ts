@@ -63,8 +63,53 @@ describe("getServerEnv", () => {
     }
   });
 
-  it("SKIP_ENV_VALIDATION=1 přeskočí validaci", () => {
+  it("SKIP_ENV_VALIDATION=1 přeskočí validaci mimo produkci", () => {
     expect(() => getServerEnv({ SKIP_ENV_VALIDATION: "1" })).not.toThrow();
+    resetServerEnvCache();
+    expect(() =>
+      getServerEnv({ SKIP_ENV_VALIDATION: "1", VERCEL_ENV: "preview" }),
+    ).not.toThrow();
+  });
+
+  it("SKIP_ENV_VALIDATION=1 se ignoruje ve VERCEL_ENV=production", () => {
+    expect(() =>
+      getServerEnv({ SKIP_ENV_VALIDATION: "1", VERCEL_ENV: "production" }),
+    ).toThrow(/DATABASE_URL/);
+  });
+
+  it("SKIP_ENV_VALIDATION=1 se ignoruje v NODE_ENV=production runtime", () => {
+    expect(() =>
+      getServerEnv({ SKIP_ENV_VALIDATION: "1", NODE_ENV: "production" }),
+    ).toThrow(EnvValidationError);
+  });
+
+  it("SKIP_ENV_VALIDATION=1 v build fázi produkce projde", () => {
+    expect(() =>
+      getServerEnv({
+        SKIP_ENV_VALIDATION: "1",
+        NODE_ENV: "production",
+        NEXT_PHASE: "phase-production-build",
+      }),
+    ).not.toThrow();
+  });
+
+  it("EMAIL_DRIVER=outbox ve VERCEL_ENV=production selže bez hodnot", () => {
+    try {
+      getServerEnv({ ...validServer, EMAIL_DRIVER: "outbox", VERCEL_ENV: "production" });
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(EnvValidationError);
+      const msg = (e as Error).message;
+      expect(msg).toContain("EMAIL_DRIVER");
+      expect(msg).not.toContain("outbox");
+      expect(msg).not.toContain("re_secret");
+    }
+  });
+
+  it("EMAIL_DRIVER=outbox mimo produkci projde", () => {
+    expect(getServerEnv({ ...validServer, EMAIL_DRIVER: "outbox", VERCEL_ENV: "preview" }).EMAIL_DRIVER).toBe(
+      "outbox",
+    );
   });
 });
 
