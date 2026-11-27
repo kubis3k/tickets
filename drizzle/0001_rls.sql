@@ -164,7 +164,7 @@ BEGIN
 END
 $$;
 --> statement-breakpoint
--- pojistka: pg_default_acl pro schéma public nesmí dávat anon/authenticated žádná práva
+-- pojistka (jen role postgres, kterou migrace spravuje; supabase_admin má vlastní ACL): pg_default_acl pro schéma public nesmí dávat anon/authenticated žádná práva
 DO $$
 DECLARE leaked text;
 BEGIN
@@ -173,6 +173,7 @@ BEGIN
   JOIN pg_namespace n ON n.oid = d.defaclnamespace
   CROSS JOIN LATERAL aclexplode(d.defaclacl) a
   WHERE n.nspname = 'public'
+    AND d.defaclrole = 'postgres'::regrole
     AND a.grantee IN (SELECT oid FROM pg_roles WHERE rolname IN ('anon', 'authenticated'));
   IF leaked IS NOT NULL THEN
     RAISE EXCEPTION 'Default privileges v public dávají práva anon/authenticated: %', leaked;

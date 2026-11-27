@@ -14,8 +14,13 @@ function redirectTo(path: string): NextResponse {
 // public: magic link confirm (POST po kliknutí na potvrzovací stránce, před přihlášením)
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const origin = request.headers.get("origin");
-  if (origin !== null && origin !== new URL(getClientEnv().NEXT_PUBLIC_APP_URL).origin) {
-    return redirectTo("/login?error=callback");
+  const fetchSite = request.headers.get("sec-fetch-site");
+  if (
+    origin === null ||
+    origin !== new URL(getClientEnv().NEXT_PUBLIC_APP_URL).origin ||
+    (fetchSite !== null && fetchSite !== "same-origin")
+  ) {
+    return new NextResponse(null, { status: 403 });
   }
 
   const form = await request.formData();

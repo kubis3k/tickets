@@ -326,6 +326,7 @@ describe("RLS: oprávnění budoucích objektů a hraniční případy", () => {
       JOIN pg_namespace n ON n.oid = d.defaclnamespace
       CROSS JOIN LATERAL aclexplode(d.defaclacl) a
       WHERE n.nspname = 'public'
+        AND d.defaclrole = 'postgres'::regrole
         AND a.grantee IN (SELECT oid FROM pg_roles WHERE rolname IN ('anon', 'authenticated'))`);
     expect((r.rows[0] as { n: number }).n).toBe(0);
   });
