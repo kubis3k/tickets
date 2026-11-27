@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireAuthenticated } from "@/lib/auth/guards";
+import { requireAuthSession } from "@/lib/auth/guards";
 import { loginUrl } from "@/lib/auth/redirect";
 import { createSupabaseAdminClient } from "@/lib/auth/supabase-admin";
 import { createSupabaseServerClient } from "@/lib/auth/supabase-server";
@@ -76,9 +76,19 @@ export async function acceptInviteAction(
     acceptor = { id: data.user.id, email: invitation.email };
   }
 
-  const result = await db.transaction((tx) =>
-    acceptInvitation(tx, { token, authUserId: acceptor.id, authEmail: acceptor.email }),
-  );
+  let result: Awaited<ReturnType<typeof acceptInvitation>>;
+  try {
+    result = await db.transaction((tx) =>
+      acceptInvitation(tx, { token, authUserId: acceptor.id, authEmail: acceptor.email }),
+    );
+  } catch (err) {
+    if (createdUserId) {
+      // Chyba transakce po vytvoření účtu: žádný osiřelý účet ani session.
+      await supabase.auth.signOut();
+      await removeCreatedAccount(createdUserId);
+    }
+    throw err;
+  }
 
   if (!result.ok) {
     if (createdUserId) {
@@ -107,7 +117,7 @@ async function removeCreatedAccount(userId: string): Promise<void> {
 
 /** Odhlásí přihlášeného uživatele s jiným e-mailem a vrátí ho na pozvánku přes přihlášení. */
 export async function leaveInviteAction(token: string): Promise<void> {
-  await requireAuthenticated();
+  await requireAuthSession();
   const parsed = inviteTokenSchema.safeParse(token);
   if (!parsed.success) redirect("/login");
   const supabase = await createSupabaseServerClient();

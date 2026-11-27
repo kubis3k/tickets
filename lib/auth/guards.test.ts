@@ -82,6 +82,7 @@ const repo: AuthRepo = {
 
 let sessionId: string | null = null;
 let path: string | null = null;
+let authOnly: SessionUser | null = null;
 
 const guards = createGuards({
   getRepo: () => repo,
@@ -90,6 +91,8 @@ const guards = createGuards({
     const row = await repo.findAppUser(sessionId);
     return row ?? null;
   },
+  getAuthSession: async (): Promise<SessionUser | null> =>
+    authOnly ? { id: authOnly.id, email: authOnly.email } : null,
   getCurrentPath: async () => path,
 });
 
@@ -100,6 +103,7 @@ const as = (id: string | null) => {
 beforeEach(() => {
   sessionId = null;
   path = null;
+  authOnly = null;
 });
 
 describe("requireAuthenticated", () => {
@@ -123,6 +127,20 @@ describe("requireAuthenticated", () => {
   it("uživatel s řádkem projde", async () => {
     as("loner");
     await expect(guards.requireAuthenticated()).resolves.toMatchObject({ id: "loner" });
+  });
+});
+
+describe("requireAuthSession", () => {
+  it("anonym → redirect na /login", async () => {
+    path = "/invite/abc";
+    await expect(guards.requireAuthSession()).rejects.toThrow("REDIRECT:/login?next=%2Finvite%2Fabc");
+  });
+  it("session bez řádku v users projde (jen identita, žádná role)", async () => {
+    authOnly = { id: "ghost", email: "g@x.cz" };
+    await expect(guards.requireAuthSession()).resolves.toEqual({ id: "ghost", email: "g@x.cz" });
+    // a přesto neprojde guardem administrace
+    as("ghost");
+    await expect(guards.requireAuthenticated()).rejects.toThrow("REDIRECT:");
   });
 });
 

@@ -34,3 +34,11 @@ export function loginUrl(next?: string | null): string {
   const safe = safeNext(next, "");
   return safe ? `/login?next=${encodeURIComponent(safe)}` : "/login";
 }
+
+/**
+ * Session bez řádku v `users` (pozvaný, který ještě nepřijal pozvánku) se po přihlášení smí
+ * ponechat jen při návratu na přijetí pozvánky. Jinak se odhlásí.
+ */
+export function isInviteNext(next: string | null | undefined): boolean {
+  return safeNext(next, "").startsWith("/invite/");
+}

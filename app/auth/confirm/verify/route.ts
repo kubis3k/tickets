@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getClientEnv } from "@/lib/config/env.client";
-import { safeNext } from "@/lib/auth/redirect";
+import { isInviteNext, safeNext } from "@/lib/auth/redirect";
 import { getAuthRepo } from "@/lib/auth/repo";
 import { createSupabaseServerClient } from "@/lib/auth/supabase-server";
 import { confirmSchema } from "@/lib/validation/auth";
@@ -40,7 +40,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!userId) return redirectTo("/login?error=callback");
 
   // Auth účet bez řádku v `users` do administrace nepatří.
-  if (!(await getAuthRepo().findAppUser(userId))) {
+  // Výjimka: návrat na přijetí pozvánky (řádek v `users` vznikne až při přijetí).
+  if (!(await getAuthRepo().findAppUser(userId)) && !isInviteNext(parsed.data.next)) {
     await supabase.auth.signOut();
     return redirectTo("/login?error=callback");
   }

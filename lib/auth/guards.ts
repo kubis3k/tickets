@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { forbidden, notFound, redirect } from "next/navigation";
 import { loginUrl } from "./redirect";
 import { getAuthRepo, type AuthRepo } from "./repo";
-import { getSessionUser } from "./session";
+import { getAuthSession, getSessionUser } from "./session";
 import type { EffectiveRole, OrgRef, OrgRole, SessionUser } from "./types";
 
 /** Hlavička, kterou nastavuje proxy.ts (cesta + query) pro `next` v přesměrování na login. */
@@ -12,6 +12,7 @@ export const PATHNAME_HEADER = "x-pathname";
 export type GuardDeps = {
   getRepo: () => AuthRepo;
   getSessionUser: () => Promise<SessionUser | null>;
+  getAuthSession: () => Promise<SessionUser | null>;
   getCurrentPath: () => Promise<string | null>;
 };
 
@@ -27,6 +28,16 @@ const STAFF_ROLES: readonly OrgRole[] = ["owner", "staff"];
 export function createGuards(deps: GuardDeps) {
   async function requireAuthenticated(): Promise<SessionUser> {
     const user = await deps.getSessionUser();
+    if (!user) redirect(loginUrl(await deps.getCurrentPath()));
+    return user;
+  }
+
+  /**
+   * Přihlášená Supabase session BEZ požadavku na řádek v `users` (jen pro přijetí pozvánky).
+   * Nedává žádný přístup do administrace; ta dál vyžaduje `requireAuthenticated` a výše.
+   */
+  async function requireAuthSession(): Promise<SessionUser> {
+    const user = await deps.getAuthSession();
     if (!user) redirect(loginUrl(await deps.getCurrentPath()));
     return user;
   }
@@ -100,6 +111,7 @@ export function createGuards(deps: GuardDeps) {
 
   return {
     requireAuthenticated,
+    requireAuthSession,
     requirePlatformAdmin,
     requireAnyMembership,
     requireOrgRole,
@@ -121,10 +133,12 @@ async function currentPath(): Promise<string | null> {
 const guards = createGuards({
   getRepo: getAuthRepo,
   getSessionUser,
+  getAuthSession,
   getCurrentPath: currentPath,
 });
 
 export const requireAuthenticated = guards.requireAuthenticated;
+export const requireAuthSession = guards.requireAuthSession;
 export const requirePlatformAdmin = guards.requirePlatformAdmin;
 export const requireAnyMembership = guards.requireAnyMembership;
 export const requireOrgRole = guards.requireOrgRole;

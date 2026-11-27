@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getClientEnv } from "@/lib/config/env.client";
 import { cs } from "@/lib/i18n/cs";
 import type { LoginFormState } from "@/lib/auth/login-state";
-import { safeNext } from "@/lib/auth/redirect";
+import { isInviteNext, safeNext } from "@/lib/auth/redirect";
 import { getAuthRepo } from "@/lib/auth/repo";
 import { createSupabaseServerClient } from "@/lib/auth/supabase-server";
 import { magicLinkSchema, passwordLoginSchema } from "@/lib/validation/auth";
@@ -30,7 +30,8 @@ export async function signInWithPasswordAction(
 
   // Auth účet bez řádku v `users` (např. zákazník) do administrace nepatří.
   const appUser = await getAuthRepo().findAppUser(data.user.id);
-  if (!appUser) {
+  // Výjimka: návrat na přijetí pozvánky (řádek v `users` vznikne až při přijetí).
+  if (!appUser && !isInviteNext(parsed.data.next)) {
     await supabase.auth.signOut();
     return { error: cs.auth.invalidCredentials };
   }

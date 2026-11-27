@@ -274,6 +274,7 @@ describe("guard-first: server actions a route handlery", () => {
   it("allowlist guardů se načte z AST guards.ts", () => {
     expect([...found.allow].sort()).toEqual([
       "requireAnyMembership",
+      "requireAuthSession",
       "requireAuthenticated",
       "requireDoor",
       "requireOrgRole",
