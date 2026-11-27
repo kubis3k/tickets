@@ -15,3 +15,16 @@ claude
 Každý úkol jde přes `/flow <úkol>`, každá fáze přes `/phase <N>`. Merge do `main` dělá jen člověk po proklikání Vercel preview.
 
 Dashboard spotřeby tokenů: `python3 tools/flow-dash.py` → http://localhost:8377
+
+## Lokální vývoj
+```
+pnpm install
+cp .env.example .env.local   # doplň hodnoty (soubor necommituj)
+pnpm dev          # http://localhost:3000
+pnpm lint
+pnpm typecheck
+pnpm test
+E2E=1 pnpm e2e
+pnpm format
+```
+Pro lint/build bez env: `SKIP_ENV_VALIDATION=1 pnpm build`.
