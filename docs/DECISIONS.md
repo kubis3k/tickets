@@ -12,6 +12,47 @@
 - [2026-11-26] [prep] Doména tickets.3lwave.cz, název produktu se vybere před spuštěním (lib/config/brand.ts)
 - [2026-11-26] [prep] Jediný platform admin (Luigi). Northevents = samostatná organizace po založení s.r.o.
 - [2026-11-26] [prep] Každá fáze = PR, review agent + ruční test v preview, merge jen člověk
+- [2026-11-27] [F0] Plán fáze 0 (8 úkolů) schválen automaticky — běh bez dozoru (flow §2)
+- [2026-11-27] [F0] Bez `src/`, `app/` a `lib/` v rootu — kopíruje zadání
+- [2026-11-27] [F0] `users.id` = `auth.users.id`; admin přístup jen přes `users` + `memberships`/`platform_admins` — jedna identita, zákazníci v auth nedostanou admin
+- [2026-11-27] [F0] Vlastní `invitations` s hashem tokenu a Resend, ne `inviteUserByEmail` — OTP platí max 24 h, zadání chce 7 dní a Resend
+- [2026-11-27] [F0] Signups vypnuté v Supabase a účty jen přes `admin.createUser` — žádná veřejná registrace
+- [2026-11-27] [F0] RLS = SELECT politiky pro `authenticated`, `anon` deny, Drizzle RLS obchází — RLS je pojistka (SPEC §9)
+- [2026-11-27] [F0] Middleware kontroluje jen přihlášení, role pro `/scan` hlídá guard v layoutu — odchylka od PHASE_0, middleware není bezpečnostní hranice
+- [2026-11-27] [F0] Nové tabulky mimo SPEC §5: `invitations`, `door_assignments`, `invoice_sequences`, `jobs`; do `audit_log` přidány `id` a `organization_id` — SPEC §2/§4/§9 je potřebují
+- [2026-11-27] [F0] Procenta jako integer bps (`fee_bps`, `vat_rate_bps`, `fee_override_bps`) — žádné desetinné hodnoty v penězích
+- [2026-11-27] [F0] Testy DB přes PGlite, e2e jen s env a lokálně, v CI ne — env a DB agentům nejsou dostupné
+- [2026-11-27] [F0] Ne-člen org dostane 404 místo 403 — nejde zjišťovat, jaké organizace existují
+- [2026-11-27] [F0] Zapomenuté heslo řeší magic link, vlastní reset se nedělá — menší rozsah
+- [2026-11-27] [F0] Vercel Preview zatím sdílí Supabase DB s produkcí — před spuštěním přijatelné, ve Fázi 7 se oddělí
+- [2026-11-27] [F0] Práce ve worktree branchi, push do `origin/phase-0` — lokální `phase-0` je checkoutnutá v jiném worktree
+- [2026-11-27] [F0] Schéma nad rámec SPEC: orders.promo_code_id/reservation_id/refunded_amount, order_items.discount_amount, tickets.event_id/organization_id/order_item_id/qr_version, invoices credit_for_invoice_id/recipient_organization_id/issuer_snapshot + invoice_lines, refunds, price_waves.reserved_count, checkins event/org/scanned_by, settlements bigint + refunds/stripe_fees — auditní nálezy (vyúčtování, refundy, převod QR, izolace org)
+- [2026-11-27] [F0] QR token bude `ticketId.eventId.version.sig`, převod zvýší `qr_version` — starý QR po převodu neplatí
+- [2026-11-27] [F0] Složené FK (event_id, organization_id) → events(id, organization_id) — dítě akce nemůže patřit jiné org
+- [2026-11-27] [F0] E-mail bez citext: text + CHECK lower — PGlite/Supabase kompatibilita
+- [2026-11-27] [F0] RLS: owner/staff vidí org data, door jen tickets/checkins/events přiřazených akcí a jen s membership door; authenticated jen SELECT; REVOKE ALL anon/authenticated + default privileges FOR ROLE postgres (TRUNCATE obchází RLS); globální REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC — nové RLS helper funkce potřebují explicitní GRANT
+- [2026-11-27] [F0] Next 16: `proxy.ts` místo middleware, `experimental.authInterrupts` pro forbidden(), `getClaims()` jako identita
+- [2026-11-27] [F0] 403 špatná role, 404 ne-člen; door-only uživatel landing /scan
+- [2026-11-27] [F0] Magic link přes token_hash potvrzuje POST na /auth/confirm (login CSRF), Origin povinný
+- [2026-11-27] [F0] Opakované pozvání nahradí aktivní pozvánku (stará revoke „superseded"); přijetí nepřepisuje existující roli
+- [2026-11-27] [F0] Session bez users řádku povolena jen při next=/invite/… (přijetí pozvánky existujícím auth účtem); admin guardy users řádek vyžadují
+- [2026-11-27] [F0] `@react-email/components` je deprecated — zvážit `react-email` později
+- [2026-11-28] [F0] Slug organizace je po založení neměnný
+- [2026-11-28] [F0] Invariant „≥1 owner" je hlídaný přes SELECT … FOR UPDATE nad memberships
+- [2026-11-28] [F0] Formuláře zadávají Kč a procenta jako text a parsuje je lib/money bez float
+- [2026-11-28] [F0] Fixní provize má strop 1000 Kč. Plátce DPH musí mít DIČ
+- [2026-11-28] [F0] Owner smí měnit zobrazovaný název, fakturační adresu a branding. IČO, DIČ, legal_name, vat_payer, invoice_prefix, poplatky, payout_delay_days a meta_pixel_id mění jen platform admin
+- [2026-11-28] [F0] Přepínač organizací ukazuje jen role owner a staff
+- [2026-11-28] [F0] Seed je idempotentní a data nepřepisuje. Admin není členem 3Lwave. Adresa 3Lwave je placeholder
+- [2026-11-28] [F0] Seed běží s `--conditions=react-server` a s kompletním env
+- [2026-11-28] [F0] E2E jen proti localhostu a testovacímu Supabase, bez úklidu
+- [2026-11-28] [F0] Šablona magic linku `{{ .RedirectTo }}&token_hash=…&type=email`. Redirect URLs jen localhost, produkce a team-scoped preview, nikdy `*.vercel.app`
+- [2026-11-28] [F0] `RESEND_API_KEY` a `EMAIL_FROM` jsou povinné jen pro driver resend
 
 # Odloženo
 - [po v1] box office, virtuální fronta, sedadla, Wallet passy, BilanxFlow napojení, EN jazyk
+- [F3] serverové zakládání zákaznických auth účtů — signups jsou vypnuté
+- [F3/F4] uložení privátního Ed25519 klíče akce — mimo F0
+- [F5] šifrované uložení CAPI tokenu per org — mimo F0
+- [F7] rate limit na login, magic link a přijetí pozvánky — SPEC řadí ochrany do F7
+- [F3] zákaznické auth účty se přihlašují mimo admin login (login odmítá účty bez users)
