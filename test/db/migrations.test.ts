@@ -178,6 +178,40 @@ describe("migrace v PGlite", () => {
     expect(short).toMatch(/tickets_code_min_length/);
   });
 
+  it("invoices: doklad s objednávkou jiné organizace selže, vlastní projde", async () => {
+    const a = await seedOrder();
+    const b = await seedTicketType();
+    const base = { type: "invoice" as const, issuedAt: new Date(), totals: {}, issuerSnapshot: {} };
+    const msg = await pgError(
+      t.db.insert(invoices).values({ ...base, organizationId: b.org.id, orderId: a.order.id, number: "2026-1" }),
+    );
+    expect(msg).toMatch(/invoices_order_org_fk/);
+    await t.db.insert(invoices).values({ ...base, organizationId: a.org.id, orderId: a.order.id, number: "2026-1" });
+  });
+
+  it("tickets: typ vstupenky z jiné akce selže (složená FK)", async () => {
+    const { org, tt, order } = await seedOrder();
+    const [item] = await t.db
+      .insert(orderItems)
+      .values({ orderId: order.id, ticketTypeId: tt.id, unitPrice: 1000, qty: 1, vatRateBps: 1200 })
+      .returning();
+    const [ev2] = await t.db
+      .insert(events)
+      .values({ organizationId: org.id, slug: "ev3", name: "Ev3", startsAt: new Date() })
+      .returning();
+    const [order2] = await t.db
+      .insert(orders)
+      .values({ organizationId: org.id, eventId: ev2!.id, email: "a@b.cz", subtotal: 1, total: 1 })
+      .returning();
+    const msg = await pgError(
+      t.db.insert(tickets).values({
+        orderId: order2!.id, orderItemId: item!.id, ticketTypeId: tt.id, eventId: ev2!.id,
+        organizationId: org.id, code: "abcdef0123456789abcd",
+      }),
+    );
+    expect(msg).toMatch(/tickets_ticket_type_event_fk/);
+  });
+
   it("promo: used_count > max_uses selže", async () => {
     const { ev, org } = await seedTicketType();
     const msg = await pgError(

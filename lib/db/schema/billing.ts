@@ -30,7 +30,7 @@ export const invoices = pgTable(
     /** příjemce faktury za provizi (organizace, které se účtuje); jinak null */
     recipientOrganizationId: uuid("recipient_organization_id").references(() => organizations.id),
     /** null u faktury za provizi (vyúčtování akce) */
-    orderId: uuid("order_id").references(() => orders.id),
+    orderId: uuid("order_id"),
     /** dobropis odkazuje na původní doklad */
     creditForInvoiceId: uuid("credit_for_invoice_id").references((): AnyPgColumn => invoices.id),
     number: text("number").notNull(),
@@ -44,6 +44,12 @@ export const invoices = pgTable(
     createdAt: createdAt(),
   },
   (t) => [
+    // doklad k objednávce patří stejné organizaci jako objednávka (MATCH SIMPLE: null order_id se nekontroluje)
+    foreignKey({
+      name: "invoices_order_org_fk",
+      columns: [t.orderId, t.organizationId],
+      foreignColumns: [orders.id, orders.organizationId],
+    }),
     uniqueIndex("invoices_organization_id_number_uq").on(t.organizationId, t.number),
     index("invoices_organization_id_idx").on(t.organizationId),
     index("invoices_order_id_idx").on(t.orderId),

@@ -1,5 +1,5 @@
 {
-  "id": "7b77087d-a19d-474b-b3fe-d901f717d215",
+  "id": "69cd2937-70bc-4cf5-b002-09e576bf5691",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1621,7 +1621,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "ticket_types_id_event_id_uq": {
+          "name": "ticket_types_id_event_id_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "event_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "ticket_types_vat_rate_bps_range": {
@@ -2928,19 +2937,6 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "tickets_ticket_type_id_ticket_types_id_fk": {
-          "name": "tickets_ticket_type_id_ticket_types_id_fk",
-          "tableFrom": "tickets",
-          "tableTo": "ticket_types",
-          "columnsFrom": [
-            "ticket_type_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "tickets_checked_in_by_users_id_fk": {
           "name": "tickets_checked_in_by_users_id_fk",
           "tableFrom": "tickets",
@@ -2967,6 +2963,21 @@
             "event_id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "tickets_ticket_type_event_fk": {
+          "name": "tickets_ticket_type_event_fk",
+          "tableFrom": "tickets",
+          "tableTo": "ticket_types",
+          "columnsFrom": [
+            "ticket_type_id",
+            "event_id"
+          ],
+          "columnsTo": [
+            "id",
+            "event_id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         },
         "tickets_event_org_fk": {
@@ -3408,19 +3419,6 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "invoices_order_id_orders_id_fk": {
-          "name": "invoices_order_id_orders_id_fk",
-          "tableFrom": "invoices",
-          "tableTo": "orders",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "invoices_credit_for_invoice_id_invoices_id_fk": {
           "name": "invoices_credit_for_invoice_id_invoices_id_fk",
           "tableFrom": "invoices",
@@ -3430,6 +3428,21 @@
           ],
           "columnsTo": [
             "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "invoices_order_org_fk": {
+          "name": "invoices_order_org_fk",
+          "tableFrom": "invoices",
+          "tableTo": "orders",
+          "columnsFrom": [
+            "order_id",
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id",
+            "organization_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"

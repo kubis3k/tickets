@@ -98,6 +98,8 @@ export const ticketTypes = pgTable(
       columns: [t.eventId, t.organizationId],
       foreignColumns: [events.id, events.organizationId],
     }).onDelete("cascade"),
+    // cíl složené FK z tickets (typ vstupenky patří ke stejné akci jako vstupenka)
+    unique("ticket_types_id_event_id_uq").on(t.id, t.eventId),
     index("ticket_types_event_id_idx").on(t.eventId),
     index("ticket_types_organization_id_idx").on(t.organizationId),
     check("ticket_types_vat_rate_bps_range", sql`${t.vatRateBps} >= 0 AND ${t.vatRateBps} <= 10000`),

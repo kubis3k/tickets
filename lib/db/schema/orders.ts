@@ -125,9 +125,7 @@ export const tickets = pgTable(
     orderItemId: uuid("order_item_id")
       .notNull()
       .references(() => orderItems.id),
-    ticketTypeId: uuid("ticket_type_id")
-      .notNull()
-      .references(() => ticketTypes.id),
+    ticketTypeId: uuid("ticket_type_id").notNull(),
     /** denormalizace pro scanner a QR token `ticketId.eventId.version.sig` */
     eventId: uuid("event_id").notNull(),
     /** denormalizace; konzistenci s akcí hlídá složená FK */
@@ -151,6 +149,11 @@ export const tickets = pgTable(
       columns: [t.orderId, t.eventId],
       foreignColumns: [orders.id, orders.eventId],
     }).onDelete("cascade"),
+    foreignKey({
+      name: "tickets_ticket_type_event_fk",
+      columns: [t.ticketTypeId, t.eventId],
+      foreignColumns: [ticketTypes.id, ticketTypes.eventId],
+    }),
     foreignKey({
       name: "tickets_event_org_fk",
       columns: [t.eventId, t.organizationId],

@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import * as schema from "@/lib/db/schema";
 
@@ -32,4 +33,32 @@ export async function createTestDb() {
   }
   const db = drizzle(client, { schema });
   return { client, db };
+}
+
+type TestDb = Awaited<ReturnType<typeof createTestDb>>["db"];
+export type TestTx = Parameters<Parameters<TestDb["transaction"]>[0]>[0];
+
+/**
+ * Spustí `fn` v transakci jako Supabase klient: `uid` = authenticated s JWT sub,
+ * `null` = anon. `SET LOCAL` platí jen do konce transakce, po ní se role sama vrátí.
+ * Transakce se vždy vrací zpět (rollback), takže `fn` nic nezanechá.
+ */
+export async function asUser<T>(db: TestDb, uid: string | null, fn: (tx: TestTx) => Promise<T>): Promise<T> {
+  const rollback = Symbol("rollback");
+  let result: T | undefined;
+  try {
+    await db.transaction(async (tx) => {
+      if (uid === null) {
+        await tx.execute(sql`SET LOCAL ROLE anon`);
+      } else {
+        await tx.execute(sql`SET LOCAL ROLE authenticated`);
+        await tx.execute(sql`SELECT set_config('request.jwt.claim.sub', ${uid}, true)`);
+      }
+      result = await fn(tx);
+      throw rollback;
+    });
+  } catch (e) {
+    if (e !== rollback) throw e;
+  }
+  return result as T;
 }

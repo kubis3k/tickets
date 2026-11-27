@@ -21,3 +21,7 @@ BEGIN
   END IF;
 END
 $$;
+
+-- Supabase tohle dává sám (USAGE na schémata); tabulkové granty řeší až migrace 0001_rls.
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT USAGE ON SCHEMA auth TO anon, authenticated;
