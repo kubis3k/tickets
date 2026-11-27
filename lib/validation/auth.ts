@@ -20,3 +20,10 @@ export const callbackSchema = z.object({
   type: z.enum(["email", "magiclink"]).optional(),
   next: z.string().max(2048).optional(),
 });
+
+/** Potvrzení magic linku: `token_hash` + `type` jsou povinné. */
+export const confirmSchema = z.object({
+  token_hash: z.string().min(1).max(2048),
+  type: z.enum(["email", "magiclink"]),
+  next: z.string().max(2048).optional(),
+});

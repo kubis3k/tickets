@@ -74,7 +74,7 @@ export function createGuards(deps: GuardDeps) {
     return { user, org, role: membership.role };
   }
 
-  /** Door přiřazený k akci, owner/staff organizace akce, nebo platform admin. */
+  /** Door (člen org akce s rolí door + přiřazení k akci), owner/staff organizace akce, nebo platform admin. */
   async function requireDoor(
     eventId: string,
   ): Promise<{ user: SessionUser; organizationId: string; role: EffectiveRole }> {
@@ -90,10 +90,11 @@ export function createGuards(deps: GuardDeps) {
     if (membership && STAFF_ROLES.includes(membership.role)) {
       return { user, organizationId, role: membership.role };
     }
-    if (await repo.isDoorForEvent(user.id, eventId)) {
+    // Přiřazení k akci samo nestačí: door musí být i platným členem (role door) organizace akce.
+    if (!membership) notFound();
+    if (membership.role === "door" && (await repo.isDoorForEvent(user.id, eventId))) {
       return { user, organizationId, role: "door" };
     }
-    if (!membership) notFound();
     forbidden();
   }
 

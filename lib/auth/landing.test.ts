@@ -27,6 +27,21 @@ describe("resolveAdminLanding", () => {
       slug: "acme",
     });
   });
+  it("jen role door → scanner", async () => {
+    const door = { ...org, role: "door" as const };
+    expect(await resolveAdminLanding(repo(false, [door]), "u")).toEqual({ kind: "scanner" });
+  });
+  it("door + staff v jiné org → org (staff má přednost)", async () => {
+    const door = { id: "o0", slug: "club", name: "Club", role: "door" as const };
+    expect(await resolveAdminLanding(repo(false, [door, org]), "u")).toEqual({
+      kind: "org",
+      slug: "acme",
+    });
+  });
+  it("platform admin s rolí door → platform", async () => {
+    const door = { ...org, role: "door" as const };
+    expect(await resolveAdminLanding(repo(true, [door]), "u")).toEqual({ kind: "platform" });
+  });
   it("bez organizace → none", async () => {
     expect(await resolveAdminLanding(repo(false, []), "u")).toEqual({ kind: "none" });
   });

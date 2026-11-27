@@ -36,6 +36,7 @@ const world: World = {
     staffA: "sa@x.cz",
     doorA: "da@x.cz",
     doorFree: "df@x.cz",
+    doorGhost: "dg@x.cz",
     ownerB: "ob@x.cz",
     loner: "l@x.cz",
   },
@@ -47,7 +48,11 @@ const world: World = {
     { userId: "doorFree", orgId: "org-a", role: "door" },
     { userId: "ownerB", orgId: "org-b", role: "owner" },
   ],
-  doors: [{ userId: "doorA", eventId: EVENT_A }],
+  // doorGhost má přiřazení bez členství (nesmí projít)
+  doors: [
+    { userId: "doorA", eventId: EVENT_A },
+    { userId: "doorGhost", eventId: EVENT_A },
+  ],
 };
 
 const repo: AuthRepo = {
@@ -188,6 +193,14 @@ describe("requireDoor", () => {
     await expect(guards.requireDoor(EVENT_A)).rejects.toThrow("REDIRECT:");
   });
   it("door bez přiřazení (člen org) → forbidden", async () => {
+    as("doorFree");
+    await expect(guards.requireDoor(EVENT_A)).rejects.toThrow("FORBIDDEN");
+  });
+  it("přiřazení k akci bez členství v organizaci → notFound", async () => {
+    as("doorGhost");
+    await expect(guards.requireDoor(EVENT_A)).rejects.toThrow("NOT_FOUND");
+  });
+  it("členství door bez přiřazení k akci → odmítnuto", async () => {
     as("doorFree");
     await expect(guards.requireDoor(EVENT_A)).rejects.toThrow("FORBIDDEN");
   });

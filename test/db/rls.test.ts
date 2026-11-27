@@ -266,3 +266,106 @@ describe("RLS", () => {
     expect(r).toEqual({ v: true });
   });
 });
+
+describe("RLS: oprávnění budoucích objektů a hraniční případy", () => {
+  async function priv(query: string): Promise<boolean> {
+    const r = await t.db.execute(sql.raw(query));
+    return (r.rows[0] as { v: boolean }).v;
+  }
+
+  it("nová tabulka v public nedá anon/authenticated žádné oprávnění", async () => {
+    await exec(`CREATE TABLE public.rls_probe (id int)`);
+    try {
+      for (const role of ["anon", "authenticated"]) {
+        for (const p of ["SELECT", "INSERT", "UPDATE", "DELETE", "TRUNCATE"]) {
+          expect(
+            await priv(`SELECT has_table_privilege('${role}', 'public.rls_probe', '${p}') AS v`),
+            `${role} ${p}`,
+          ).toBe(false);
+        }
+      }
+    } finally {
+      await exec(`DROP TABLE public.rls_probe`);
+    }
+  });
+
+  it("nová funkce v public nemá EXECUTE pro anon ani authenticated", async () => {
+    await exec(`CREATE FUNCTION public.rls_probe_fn() RETURNS int LANGUAGE sql AS 'SELECT 1'`);
+    try {
+      for (const role of ["anon", "authenticated"]) {
+        expect(
+          await priv(`SELECT has_function_privilege('${role}', 'public.rls_probe_fn()', 'EXECUTE') AS v`),
+          role,
+        ).toBe(false);
+      }
+    } finally {
+      await exec(`DROP FUNCTION public.rls_probe_fn()`);
+    }
+  });
+
+  it("nová sekvence v public nemá oprávnění pro anon ani authenticated", async () => {
+    await exec(`CREATE SEQUENCE public.rls_probe_seq`);
+    try {
+      for (const role of ["anon", "authenticated"]) {
+        for (const p of ["USAGE", "SELECT", "UPDATE"]) {
+          expect(
+            await priv(`SELECT has_sequence_privilege('${role}', 'public.rls_probe_seq', '${p}') AS v`),
+            `${role} ${p}`,
+          ).toBe(false);
+        }
+      }
+    } finally {
+      await exec(`DROP SEQUENCE public.rls_probe_seq`);
+    }
+  });
+
+  it("pg_default_acl pro schéma public nedává anon/authenticated nic", async () => {
+    const r = await t.db.execute(sql`
+      SELECT count(*)::int AS n
+      FROM pg_default_acl d
+      JOIN pg_namespace n ON n.oid = d.defaclnamespace
+      CROSS JOIN LATERAL aclexplode(d.defaclacl) a
+      WHERE n.nspname = 'public'
+        AND a.grantee IN (SELECT oid FROM pg_roles WHERE rolname IN ('anon', 'authenticated'))`);
+    expect((r.rows[0] as { n: number }).n).toBe(0);
+  });
+
+  it("door s přiřazením na akci cizí org bez členství tam nevidí tickets ani events", async () => {
+    const ghost = uuid();
+    await exec(`INSERT INTO auth.users (id, email) VALUES ('${ghost}', 'ghost@x.cz')`);
+    await exec(`INSERT INTO users (id, email) VALUES ('${ghost}', 'ghost@x.cz')`);
+    await exec(`INSERT INTO door_assignments (user_id, event_id) VALUES ('${ghost}', '${evB1}')`);
+    try {
+      for (const table of ["tickets", "checkins", "events"]) {
+        expect(await count(ghost, table), table).toBe(0);
+      }
+      // kontrola: kdyby měl členství door, akci by viděl
+      await exec(`INSERT INTO memberships (user_id, organization_id, role) VALUES ('${ghost}', '${orgB}', 'door')`);
+      expect(await count(ghost, "tickets", `event_id = '${evB1}'`)).toBe(1);
+    } finally {
+      await exec(`DELETE FROM memberships WHERE user_id = '${ghost}'`);
+      await exec(`DELETE FROM door_assignments WHERE user_id = '${ghost}'`);
+      await exec(`DELETE FROM users WHERE id = '${ghost}'`);
+      await exec(`DELETE FROM auth.users WHERE id = '${ghost}'`);
+    }
+  });
+
+  it("invoice_lines: příjemce faktury za provizi vidí řádky stejně jako invoices", async () => {
+    const inv = uuid();
+    await exec(`INSERT INTO invoices (id, organization_id, recipient_organization_id, number, type, issued_at, totals, issuer_snapshot)
+                VALUES ('${inv}', '${orgA}', '${orgB}', 'K-${inv}', 'commission_invoice', now(), '{}', '{}')`);
+    await exec(`INSERT INTO invoice_lines (invoice_id, position, description, quantity, unit_price, vat_rate_bps, base_amount, vat_amount, total_amount)
+                VALUES ('${inv}', 1, 'provize', 1, 100, 2100, 83, 17, 100)`);
+    try {
+      const lines = `invoice_id = '${inv}'`;
+      expect(await count(U.ownerB, "invoices", `id = '${inv}'`)).toBe(1);
+      expect(await count(U.ownerB, "invoice_lines", lines)).toBe(1);
+      expect(await count(U.staffA, "invoice_lines", lines)).toBe(1);
+      expect(await count(U.doorA, "invoice_lines", lines)).toBe(0);
+      expect(await count(U.orphan, "invoice_lines", lines)).toBe(0);
+    } finally {
+      await exec(`DELETE FROM invoice_lines WHERE invoice_id = '${inv}'`);
+      await exec(`DELETE FROM invoices WHERE id = '${inv}'`);
+    }
+  });
+});

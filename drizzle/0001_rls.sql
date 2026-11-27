@@ -128,7 +128,7 @@ CREATE POLICY "reservations_select" ON public.reservations FOR SELECT TO authent
 USING (app.is_platform_admin() OR EXISTS (SELECT 1 FROM public.events p WHERE p.id = reservations.event_id AND app.is_org_member(p.organization_id, ARRAY['owner','staff']::public.org_role[])));
 --> statement-breakpoint
 CREATE POLICY "invoice_lines_select" ON public.invoice_lines FOR SELECT TO authenticated
-USING (app.is_platform_admin() OR EXISTS (SELECT 1 FROM public.invoices p WHERE p.id = invoice_lines.invoice_id AND app.is_org_member(p.organization_id, ARRAY['owner','staff']::public.org_role[])));
+USING (app.is_platform_admin() OR EXISTS (SELECT 1 FROM public.invoices p WHERE p.id = invoice_lines.invoice_id AND (app.is_org_member(p.organization_id, ARRAY['owner','staff']::public.org_role[]) OR app.is_org_member(p.recipient_organization_id, ARRAY['owner','staff']::public.org_role[]))));
 --> statement-breakpoint
 CREATE POLICY "door_assignments_select" ON public.door_assignments FOR SELECT TO authenticated
 USING (app.is_platform_admin() OR user_id = auth.uid() OR EXISTS (SELECT 1 FROM public.events p WHERE p.id = door_assignments.event_id AND app.is_org_member(p.organization_id, ARRAY['owner','staff']::public.org_role[])));
@@ -137,7 +137,16 @@ USING (app.is_platform_admin() OR user_id = auth.uid() OR EXISTS (SELECT 1 FROM 
 -- (Supabase defaultně dává ALL; TRUNCATE by RLS obešel.) Budoucí tabulky dostanou default bez grantů.
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
 --> statement-breakpoint
-ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
+-- Budoucí objekty vytvořené vlastníkem (postgres) nesmí anon/authenticated dostat nic
+-- (Supabase jim defaultně uděluje ALL na tabulky, funkce i sekvence). Každý typ objektu zvlášť.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
+--> statement-breakpoint
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM anon, authenticated;
+--> statement-breakpoint
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
+--> statement-breakpoint
+-- Nové funkce mají v PostgreSQL EXECUTE pro PUBLIC (a tedy anon); to jde odebrat jen globálním defaultem.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;
 --> statement-breakpoint
 GRANT SELECT ON public.platform_admins, public.users, public.organizations, public.memberships, public.venues, public.events, public.ticket_types, public.promo_codes, public.orders, public.refunds, public.settlements, public.invoices, public.tickets, public.checkins, public.price_waves, public.inventory, public.order_items, public.ticket_transfers, public.reservations, public.invoice_lines, public.door_assignments TO authenticated;
 --> statement-breakpoint
@@ -151,6 +160,22 @@ BEGIN
   WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND NOT c.relrowsecurity;
   IF missing IS NOT NULL THEN
     RAISE EXCEPTION 'Tabulky bez RLS: %', missing;
+  END IF;
+END
+$$;
+--> statement-breakpoint
+-- pojistka: pg_default_acl pro schéma public nesmí dávat anon/authenticated žádná práva
+DO $$
+DECLARE leaked text;
+BEGIN
+  SELECT string_agg(d.defaclobjtype::text || ':' || a.grantee::regrole::text, ', ') INTO leaked
+  FROM pg_default_acl d
+  JOIN pg_namespace n ON n.oid = d.defaclnamespace
+  CROSS JOIN LATERAL aclexplode(d.defaclacl) a
+  WHERE n.nspname = 'public'
+    AND a.grantee IN (SELECT oid FROM pg_roles WHERE rolname IN ('anon', 'authenticated'));
+  IF leaked IS NOT NULL THEN
+    RAISE EXCEPTION 'Default privileges v public dávají práva anon/authenticated: %', leaked;
   END IF;
 END
 $$;

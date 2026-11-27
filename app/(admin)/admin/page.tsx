@@ -8,6 +8,7 @@ export default async function AdminHome() {
   const user = await requireAuthenticated();
   const landing = await resolveAdminLanding(getAuthRepo(), user.id);
   if (landing.kind === "platform") redirect("/admin/platform");
+  if (landing.kind === "scanner") redirect("/scan");
   if (landing.kind === "org") redirect(`/admin/${landing.slug}`);
 
   return (

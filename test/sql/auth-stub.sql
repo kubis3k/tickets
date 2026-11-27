@@ -25,3 +25,9 @@ $$;
 -- Supabase tohle dává sám (USAGE na schémata); tabulkové granty řeší až migrace 0001_rls.
 GRANT USAGE ON SCHEMA public TO anon, authenticated;
 GRANT USAGE ON SCHEMA auth TO anon, authenticated;
+
+-- Supabase dává anon/authenticated defaultně ALL na nové tabulky, funkce a sekvence v public.
+-- Stub to napodobuje, aby test ověřil, že 0001_rls to odebere.
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;

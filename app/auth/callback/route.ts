@@ -10,7 +10,7 @@ function redirectTo(path: string): NextResponse {
   return NextResponse.redirect(new URL(path, base));
 }
 
-// public: auth callback (výměna kódu / token_hash za session, před přihlášením)
+// public: auth callback (výměna PKCE kódu za session, token_hash přesměruje na potvrzení)
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const params = request.nextUrl.searchParams;
   const parsed = callbackSchema.safeParse({
@@ -23,16 +23,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const { code, token_hash: tokenHash, type } = parsed.data;
   const next = safeNext(parsed.data.next);
-  const supabase = await createSupabaseServerClient();
 
-  let userId: string | null = null;
-  if (code) {
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) userId = data.user?.id ?? null;
-  } else if (tokenHash && type) {
-    const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
-    if (!error) userId = data.user?.id ?? null;
+  // token_hash GET-em nikdy nepřihlašuje (login CSRF, e-mailové skenery/prefetch spotřebují token):
+  // přesměruje na potvrzovací stránku, přihlášení proběhne až POSTem na /auth/confirm/verify.
+  if (!code && tokenHash && type) {
+    const query = new URLSearchParams({ token_hash: tokenHash, type, next });
+    return redirectTo(`/auth/confirm?${query.toString()}`);
   }
+  if (!code) return redirectTo("/login?error=callback");
+
+  const supabase = await createSupabaseServerClient();
+  let userId: string | null = null;
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (!error) userId = data.user?.id ?? null;
   if (!userId) return redirectTo("/login?error=callback");
 
   // Auth účet bez řádku v `users` do administrace nepatří.
