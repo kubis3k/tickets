@@ -1,4 +1,8 @@
+import { existsSync } from "node:fs";
 import { defineConfig } from "drizzle-kit";
+
+// drizzle-kit `.env.local` nenačítá; nic se nevypisuje.
+if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 // DIRECT_URL se čte jen z procesu; `generate` a `check` databázi nepotřebují.
 export default defineConfig({
