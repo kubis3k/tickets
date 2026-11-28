@@ -18,7 +18,7 @@ describe("parseCzkToHalere", () => {
     expect(parseCzkToHalere(input)).toBe(expected);
   });
 
-  it.each(["-1", "-0,50", "1,234", "12.345", "", " ", "abc", "1,", ",5", "12 Kč", "1 23", "1,2,3", "1e3"])(
+  it.each(["-1", "-0,50", "1,234", "12.345", "", " ", "abc", "1,", ",5", "12 Kč", "1 23", "1,2,3", "1e3", "٣", "１", " ", "٣,50", "１２"])(
     "odmítne %j",
     (input) => {
       expect(parseCzkToHalere(input)).toBeNull();

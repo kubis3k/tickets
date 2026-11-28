@@ -1,8 +1,11 @@
 import { z } from "zod";
 import { cs } from "@/lib/i18n/cs";
-import { MAX_INT4, parseCzkToHalere, parsePercentToBps } from "@/lib/money/parse";
+import { parseCzkToHalere, parsePercentToBps } from "@/lib/money/parse";
 
 const v = cs.platform.validation;
+
+/** Strop fixního poplatku: 1 000 Kč v haléřích. */
+export const MAX_FEE_FIXED = 100_000;
 
 export const RESERVED_SLUGS = [
   "platform",
@@ -67,7 +70,7 @@ const editableShape = {
     .number({ error: v.feeFixedCzk })
     .int({ error: v.feeFixedCzk })
     .min(0, { error: v.feeFixedCzk })
-    .max(MAX_INT4, { error: v.feeFixedCzk }),
+    .max(MAX_FEE_FIXED, { error: v.feeFixedMax }),
   payoutDelayDays: z
     .number({ error: v.payoutDelayDays })
     .int({ error: v.payoutDelayDays })
@@ -80,8 +83,20 @@ const editableShape = {
   metaPixelId: nullable(z.string().regex(/^\d{5,20}$/, { error: v.metaPixelId })),
 };
 
-export const orgUpdateSchema = z.object(editableShape);
-export const orgInputSchema = z.object({ slug: slugSchema, ...editableShape });
+/** Plátce DPH musí mít DIČ. Formulář vždy posílá celý stav, takže stačí kontrola v rámci vstupu. */
+function requireDicForVatPayer(
+  data: { vatPayer: boolean; dic: string | null },
+  ctx: z.RefinementCtx,
+): void {
+  if (data.vatPayer && data.dic === null) {
+    ctx.addIssue({ code: "custom", path: ["dic"], message: v.dicRequired });
+  }
+}
+
+export const orgUpdateSchema = z.object(editableShape).superRefine(requireDicForVatPayer);
+export const orgInputSchema = z
+  .object({ slug: slugSchema, ...editableShape })
+  .superRefine(requireDicForVatPayer);
 
 export type OrgInput = z.infer<typeof orgInputSchema>;
 export type OrgUpdateInput = z.infer<typeof orgUpdateSchema>;
