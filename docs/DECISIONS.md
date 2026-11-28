@@ -26,9 +26,22 @@
 - [2026-11-27] [F0] Zapomenuté heslo řeší magic link, vlastní reset se nedělá — menší rozsah
 - [2026-11-27] [F0] Vercel Preview zatím sdílí Supabase DB s produkcí — před spuštěním přijatelné, ve Fázi 7 se oddělí
 - [2026-11-27] [F0] Práce ve worktree branchi, push do `origin/phase-0` — lokální `phase-0` je checkoutnutá v jiném worktree
+- [2026-11-27] [F0] Schéma nad rámec SPEC: orders.promo_code_id/reservation_id/refunded_amount, order_items.discount_amount, tickets.event_id/organization_id/order_item_id/qr_version, invoices credit_for_invoice_id/recipient_organization_id/issuer_snapshot + invoice_lines, refunds, price_waves.reserved_count, checkins event/org/scanned_by, settlements bigint + refunds/stripe_fees — auditní nálezy (vyúčtování, refundy, převod QR, izolace org)
+- [2026-11-27] [F0] QR token bude `ticketId.eventId.version.sig`, převod zvýší `qr_version` — starý QR po převodu neplatí
+- [2026-11-27] [F0] Složené FK (event_id, organization_id) → events(id, organization_id) — dítě akce nemůže patřit jiné org
+- [2026-11-27] [F0] E-mail bez citext: text + CHECK lower — PGlite/Supabase kompatibilita
+- [2026-11-27] [F0] RLS: owner/staff vidí org data, door jen tickets/checkins/events přiřazených akcí a jen s membership door; authenticated jen SELECT; REVOKE ALL anon/authenticated + default privileges FOR ROLE postgres (TRUNCATE obchází RLS); globální REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC — nové RLS helper funkce potřebují explicitní GRANT
+- [2026-11-27] [F0] Next 16: `proxy.ts` místo middleware, `experimental.authInterrupts` pro forbidden(), `getClaims()` jako identita
+- [2026-11-27] [F0] 403 špatná role, 404 ne-člen; door-only uživatel landing /scan
+- [2026-11-27] [F0] Magic link přes token_hash potvrzuje POST na /auth/confirm (login CSRF), Origin povinný
+- [2026-11-27] [F0] Opakované pozvání nahradí aktivní pozvánku (stará revoke „superseded"); přijetí nepřepisuje existující roli
+- [2026-11-27] [F0] Session bez users řádku povolena jen při next=/invite/… (přijetí pozvánky existujícím auth účtem); admin guardy users řádek vyžadují
+- [2026-11-27] [F0] `@react-email/components` je deprecated — zvážit `react-email` později
 
 # Odloženo
 - [po v1] box office, virtuální fronta, sedadla, Wallet passy, BilanxFlow napojení, EN jazyk
 - [F3] serverové zakládání zákaznických auth účtů — signups jsou vypnuté
 - [F3/F4] uložení privátního Ed25519 klíče akce — mimo F0
 - [F5] šifrované uložení CAPI tokenu per org — mimo F0
+- [F7] rate limit na login, magic link a přijetí pozvánky — SPEC řadí ochrany do F7
+- [F3] zákaznické auth účty se přihlašují mimo admin login (login odmítá účty bez users)
