@@ -7,6 +7,14 @@ const allowed = join("lib", "config", "brand.ts");
 // Tento test sám obsahuje zakázané řetězce jako literály, proto se vynechá.
 const self = join("test", "static", "brand.test.ts");
 const forbidden = ["GlobaalTicket", "tickets.3lwave.cz"];
+// Kořenové konfigurační soubory také nesmí nést název ani doménu.
+const rootFiles = [
+  "proxy.ts",
+  "instrumentation.ts",
+  "next.config.ts",
+  "playwright.config.ts",
+  "drizzle.config.ts",
+];
 const exts = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".css", ".md", ".json"]);
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -19,9 +27,10 @@ function walk(dir: string, out: string[] = []): string[] {
 }
 
 describe("branding jen z lib/config/brand.ts", () => {
-  const files = ["app", "lib", "components", "e2e", "test"]
+  const files = ["app", "lib", "components", "e2e", "test", "scripts"]
     .filter((d) => existsSync(join(root, d)))
     .flatMap((d) => walk(join(root, d)))
+    .concat(rootFiles.map((f) => join(root, f)).filter((f) => existsSync(f)))
     .filter((f) => relative(root, f) !== self);
 
   it("najde zdrojové soubory", () => {

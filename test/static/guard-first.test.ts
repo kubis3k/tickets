@@ -56,10 +56,7 @@ function hasFileUseServer(sf: ts.SourceFile): boolean {
 }
 
 type FnLike =
-  | ts.FunctionDeclaration
-  | ts.FunctionExpression
-  | ts.ArrowFunction
-  | ts.MethodDeclaration;
+  ts.FunctionDeclaration | ts.FunctionExpression | ts.ArrowFunction | ts.MethodDeclaration;
 
 function isFnLike(n: ts.Node): n is FnLike {
   return (
@@ -151,11 +148,7 @@ type Analysis = {
   markers: number;
 };
 
-export function analyzeSource(
-  rel: string,
-  text: string,
-  allow: ReadonlySet<string>,
-): Analysis {
+export function analyzeSource(rel: string, text: string, allow: ReadonlySet<string>): Analysis {
   const sf = parse(rel, text);
   const result: Analysis = { actions: [], violations: [], publics: [], markers: 0 };
   const isRoute = /(^|\/)route\.ts$/.test(rel) && rel.startsWith("app/");
@@ -204,7 +197,8 @@ export function analyzeSource(
           (clause !== undefined &&
             ts.isNamedExports(clause) &&
             clause.elements.every((el) => el.isTypeOnly));
-        if (!typeOnly) shape("`export { … }` / `export * from` je zakázáno (export přímo u funkce)");
+        if (!typeOnly)
+          shape("`export { … }` / `export * from` je zakázáno (export přímo u funkce)");
       } else if (
         exported &&
         (ts.isClassDeclaration(st) || ts.isEnumDeclaration(st) || ts.isModuleDeclaration(st))
@@ -373,15 +367,15 @@ describe("guard-first: samotestování na in-memory zdrojích", () => {
       run(SA, `${useServer}export default wrap(async () => { await requireAuthenticated(); });`)
         .violations,
     ).toHaveLength(1);
-    expect(run(SA, `${useServer}export default async function () { foo(); }`).violations).toHaveLength(1);
+    expect(
+      run(SA, `${useServer}export default async function () { foo(); }`).violations,
+    ).toHaveLength(1);
   });
 
   it("obcházecí vzor: export const x = wrap(...)", () => {
     expect(
-      run(
-        SA,
-        `${useServer}export const a = wrap(async () => { await requireAuthenticated(); });`,
-      ).violations,
+      run(SA, `${useServer}export const a = wrap(async () => { await requireAuthenticated(); });`)
+        .violations,
     ).toHaveLength(1);
     expect(
       run("app/x/route.ts", `${IMPORT}export const GET = wrap(async () => {});`).violations,
@@ -397,10 +391,8 @@ describe("guard-first: samotestování na in-memory zdrojích", () => {
       ).violations,
     ).toHaveLength(1);
     expect(
-      run(
-        "lib/x/y.ts",
-        `export const make = () => async () => { "use server"; save(); };`,
-      ).violations,
+      run("lib/x/y.ts", `export const make = () => async () => { "use server"; save(); };`)
+        .violations,
     ).toHaveLength(1);
   });
 
@@ -454,10 +446,7 @@ describe("guard-first: samotestování na in-memory zdrojích", () => {
     );
     expect(inline.violations).toEqual([]);
     expect(inline.publics).toHaveLength(1);
-    const wrapped = run(
-      SA,
-      `"use server";\n// public: x\nexport const a = wrap(async () => {});`,
-    );
+    const wrapped = run(SA, `"use server";\n// public: x\nexport const a = wrap(async () => {});`);
     expect(wrapped.violations).toHaveLength(1);
   });
 
