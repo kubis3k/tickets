@@ -59,8 +59,9 @@ Hodnoty patří jen do `.env.local` a do Vercelu. Validace (Zod) běží při st
    - Site URL: adresa produkce.
    - Redirect URLs (povol i s query, proto `**`):
      - `http://localhost:3000/auth/callback**`
-     - `https://<adresa Vercel preview>/auth/callback**` (nebo wildcard preview domény)
      - `https://<produkční doména>/auth/callback**`
+     - preview: `https://*-<team-slug>.vercel.app/auth/callback**` (vzor omezený na tým)
+   - **Nikdy `https://*.vercel.app/**`**: kdokoli by si na Vercelu postavil vlastní aplikaci a převzal účet přes magic link.
 4. **Authentication → SMTP Settings → Custom SMTP** (e-maily z Supabase Auth, tedy magic link, jdou přes Resend): host `smtp.resend.com`, port `465`, uživatel `resend`, heslo = `RESEND_API_KEY`, odesílatel z ověřené domény.
 5. **Authentication → Email Templates → Magic Link**: odkaz musí být přesně
 
@@ -112,7 +113,8 @@ Spouští se přes `tsx --conditions=react-server` (kvůli importu `server-only`
   2. `E2E=1 pnpm e2e` (PowerShell: `$env:E2E=1; pnpm e2e`). Playwright sám spustí `pnpm dev` s `EMAIL_DRIVER=outbox`; e-maily skončí v `.e2e-outbox/` (není v gitu).
   3. Pokud už dev server běží, musí běžet s `EMAIL_DRIVER=outbox`, jinak test e-mail s pozvánkou nenajde (a odešel by skutečný e-mail).
   4. Test `e2e/invite-flow.spec.ts`: admin založí organizaci → pozve ownera (`e2e+<čas>@example.com`) → odkaz z outboxu → owner v čistém prohlížeči nastaví heslo a vidí svou organizaci → `/admin/3lwave` vrátí 404.
-  5. **Úklid se nedělá**: každý běh nechá v databázi organizaci `e2e-<čas>`, jejího ownera (auth účet i `users` řádek) a audit. Smaž je ručně (Platform admin nebo SQL), pokud překážejí. Nespouštěj e2e proti produkční databázi.
+  5. **E2E spouštěj jen proti lokálnímu/testovacímu Supabase projektu, nikdy proti produkci.** `NEXT_PUBLIC_APP_URL` v prostředí testu musí být localhost, jinak test selže ještě před během. Port lze změnit přes `E2E_PORT` (výchozí 3000).
+  6. **Úklid se nedělá** (service role klíč smí být jen v `env.ts` a `supabase-admin.ts`). Po každém běhu zůstává: organizace se slugem `e2e-<čas>`, uživatel `e2e+<čas>@example.com` (auth účet i řádek `users`), členství a audit. Smaž je ručně: organizaci v Platform adminu nebo SQL (`delete from organizations where slug like 'e2e-%'`, navázané řádky podle FK), uživatele v Supabase → Authentication → Users (filtr `e2e+`) a řádky `users` s tímto e-mailem. Heslo ownera je náhodné a nikde se neukládá.
 
 ## Struktura repa
 

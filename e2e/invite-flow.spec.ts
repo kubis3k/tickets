@@ -1,6 +1,7 @@
+import { randomBytes } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { cs } from "../lib/i18n/cs";
-import { adminCredentials, e2eBaseUrl } from "./helpers/env";
+import { adminCredentials, assertLocalE2e, e2eBaseUrl } from "./helpers/env";
 import { extractInvitePath, waitForOutboxMessage } from "./helpers/outbox";
 
 test.skip(process.env.E2E !== "1", "E2E=1 zapíná e2e testy");
@@ -9,10 +10,12 @@ test("admin založí organizaci, pozve ownera, owner přijme pozvánku a cizí o
   page,
   browser,
 }) => {
+  assertLocalE2e();
   const stamp = Date.now();
   const slug = `e2e-${stamp}`;
   const orgName = `E2E organizace ${stamp}`;
   const ownerEmail = `e2e+${stamp}@example.com`;
+  const ownerPassword = `${randomBytes(18).toString("base64url")}-Aa1!`;
   const { email, password } = adminCredentials();
 
   // 1) platform admin se přihlásí heslem
@@ -43,7 +46,7 @@ test("admin založí organizaci, pozve ownera, owner přijme pozvánku a cizí o
   try {
     const owner = await ownerContext.newPage();
     await owner.goto(invitePath);
-    await owner.locator("#invite-password").fill(`E2e-${stamp}-heslo!`);
+    await owner.locator("#invite-password").fill(ownerPassword);
     await owner.getByRole("button", { name: cs.invitations.createAndAccept }).click();
     await owner.waitForURL(`**/admin/${slug}`);
     await expect(

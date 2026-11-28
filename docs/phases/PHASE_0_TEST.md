@@ -8,7 +8,7 @@ Potřebuješ: dva různé prohlížeče nebo běžné okno + anonymní okno, př
 
 - [ ] Ve Vercelu (Preview) jsou nastavené všechny proměnné prostředí z tabulky v `README.md` (sekce „Proměnné prostředí"). `NEXT_PUBLIC_APP_URL` je adresa tohoto preview. `EMAIL_DRIVER` nastavený není.
 - [ ] Proběhly databázové migrace (`pnpm db:migrate`) a seed (`pnpm db:seed`). Seed vytvořil platform admina (`PLATFORM_ADMIN_EMAIL`), případně s heslem `SEED_ADMIN_PASSWORD`, a organizaci 3Lwave.
-- [ ] Supabase je nastavený podle README: vypnuté „Allow new users to sign up", Redirect URLs obsahují adresu preview (`/auth/callback**`), vlastní SMTP přes Resend, šablona Magic Link s odkazem `{{ .RedirectTo }}&token_hash=...`.
+- [ ] Supabase je nastavený podle README: vypnuté „Allow new users to sign up", Redirect URLs obsahují jen localhost, produkční doménu a team-scoped preview vzor `https://*-<team-slug>.vercel.app/auth/callback**` (nikdy `https://*.vercel.app/**`), vlastní SMTP přes Resend, šablona Magic Link s odkazem `{{ .RedirectTo }}&token_hash=...`.
 - [ ] Doména odesílatele je ověřená v Resendu.
 - [ ] Adresa preview je: `________________` (vyplň, dál ji nazývám PREVIEW).
 
