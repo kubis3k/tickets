@@ -174,6 +174,8 @@ export const cs = {
       invoicePrefix: "Prefix: 1–10 znaků A–Z a 0–9.",
       feePercent: "Zadejte procenta 0–100 s nejvýše 2 desetinnými místy.",
       feeFixedCzk: "Zadejte částku v Kč s nejvýše 2 desetinnými místy.",
+      feeFixedMax: "Fixní poplatek může být nejvýše 1 000 Kč.",
+      dicRequired: "Plátce DPH musí mít vyplněné DIČ.",
       payoutDelayDays: "Zadejte celé číslo dnů 0–365.",
       logoUrl: "Zadejte platnou adresu začínající https://.",
       primaryColor: "Barva ve tvaru #RRGGBB.",
