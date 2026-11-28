@@ -40,5 +40,9 @@ export function loginUrl(next?: string | null): string {
  * ponechat jen při návratu na přijetí pozvánky. Jinak se odhlásí.
  */
 export function isInviteNext(next: string | null | undefined): boolean {
-  return safeNext(next, "").startsWith("/invite/");
+  const safe = safeNext(next, "");
+  if (safe === "") return false;
+  // Porovnává se normalizovaná cesta (URL rozloží `.`/`..` a `%2e%2e`), ne surový řetězec.
+  const pathname = new URL(safe, PLACEHOLDER_ORIGIN).pathname;
+  return pathname.startsWith("/invite/") && !pathname.includes("..");
 }

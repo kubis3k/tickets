@@ -1,22 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const verifyOtp = vi.fn();
+const signOut = vi.fn();
+const findAppUser = vi.fn();
 
 vi.mock("@/lib/config/env.client", () => ({
   getClientEnv: () => ({ NEXT_PUBLIC_APP_URL: "http://localhost:3000" }),
 }));
 vi.mock("@/lib/auth/supabase-server", () => ({
-  createSupabaseServerClient: async () => ({ auth: { verifyOtp, signOut: vi.fn() } }),
+  createSupabaseServerClient: async () => ({ auth: { verifyOtp, signOut } }),
 }));
 vi.mock("@/lib/auth/repo", () => ({
-  getAuthRepo: () => ({ findAppUser: async () => ({ id: "u", email: "u@x.cz" }) }),
+  getAuthRepo: () => ({ findAppUser }),
 }));
 
 import { NextRequest } from "next/server";
 import { POST } from "./route";
 
-function req(headers: Record<string, string>): NextRequest {
-  const body = new URLSearchParams({ token_hash: "abc", type: "email", next: "/admin" });
+function req(headers: Record<string, string>, next = "/admin"): NextRequest {
+  const body = new URLSearchParams({ token_hash: "abc", type: "email", next });
   return new NextRequest("http://localhost:3000/auth/confirm/verify", {
     method: "POST",
     headers,
@@ -27,6 +29,8 @@ function req(headers: Record<string, string>): NextRequest {
 beforeEach(() => {
   verifyOtp.mockReset();
   verifyOtp.mockResolvedValue({ data: { user: { id: "u" } }, error: null });
+  signOut.mockReset();
+  findAppUser.mockReset().mockResolvedValue({ id: "u", email: "u@x.cz" });
 });
 
 describe("POST /auth/confirm/verify", () => {
@@ -58,5 +62,29 @@ describe("POST /auth/confirm/verify", () => {
     const res = await POST(req({ origin: "http://localhost:3000" }));
     expect(res.status).toBe(303);
     expect(verifyOtp).toHaveBeenCalled();
+  });
+
+  describe("session bez řádku v users", () => {
+    const sameOrigin = { origin: "http://localhost:3000", "sec-fetch-site": "same-origin" };
+    beforeEach(() => findAppUser.mockResolvedValue(null));
+
+    it("next=/invite/… → session se ponechá a přesměruje na pozvánku", async () => {
+      const res = await POST(req(sameOrigin, "/invite/abc"));
+      expect(res.status).toBe(303);
+      expect(new URL(res.headers.get("location") ?? "").pathname).toBe("/invite/abc");
+      expect(signOut).not.toHaveBeenCalled();
+    });
+
+    it("jiné next → odhlášení a /login?error=callback", async () => {
+      const res = await POST(req(sameOrigin, "/admin"));
+      expect(new URL(res.headers.get("location") ?? "").pathname).toBe("/login");
+      expect(signOut).toHaveBeenCalled();
+    });
+
+    it("next=/invite/../admin (traversal) → odhlášení", async () => {
+      const res = await POST(req(sameOrigin, "/invite/../admin"));
+      expect(new URL(res.headers.get("location") ?? "").pathname).toBe("/login");
+      expect(signOut).toHaveBeenCalled();
+    });
   });
 });

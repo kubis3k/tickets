@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loginUrl, safeNext } from "./redirect";
+import { isInviteNext, loginUrl, safeNext } from "./redirect";
 
 describe("safeNext", () => {
   it.each([
@@ -40,5 +40,29 @@ describe("loginUrl", () => {
   it("bez platného next vrátí holý /login", () => {
     expect(loginUrl("//evil.com")).toBe("/login");
     expect(loginUrl(null)).toBe("/login");
+  });
+});
+
+describe("isInviteNext", () => {
+  it("propustí přijetí pozvánky", () => {
+    expect(isInviteNext("/invite/abc")).toBe(true);
+    expect(isInviteNext("/invite/abc?x=1")).toBe(true);
+  });
+
+  it.each([
+    "/invite/../admin",
+    "/invite/%2e%2e/admin",
+    "/invite/%2E%2E/admin/platform",
+    "/invite/./../admin",
+    "/admin",
+    "/invite",
+    "//evil.com/invite/x",
+    "https://evil.com/invite/x",
+    "/\\invite/x",
+    "",
+    null,
+    undefined,
+  ])("odmítne %j", (value) => {
+    expect(isInviteNext(value)).toBe(false);
   });
 });

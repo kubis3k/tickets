@@ -204,6 +204,24 @@ describe("requireOrgRole / requireOrgRoleBySlug", () => {
     as("ownerA");
     await expect(guards.requireOrgRoleBySlug("zzz", ["owner"])).rejects.toThrow("NOT_FOUND");
   });
+  it("org admin: door na /admin/[slug] (owner+staff) → forbidden", async () => {
+    as("doorA");
+    await expect(guards.requireOrgRoleBySlug("a", ["owner", "staff"])).rejects.toThrow("FORBIDDEN");
+  });
+  it("org admin: staff projde layoutem, na settings/members (owner) → forbidden", async () => {
+    as("staffA");
+    await expect(guards.requireOrgRoleBySlug("a", ["owner", "staff"])).resolves.toMatchObject({
+      org: ORG_A,
+      role: "staff",
+    });
+    await expect(guards.requireOrgRoleBySlug("a", ["owner"])).rejects.toThrow("FORBIDDEN");
+  });
+  it("org admin: člen jen org B na /admin/a → notFound i pro owner+staff", async () => {
+    as("ownerB");
+    await expect(guards.requireOrgRoleBySlug("a", ["owner", "staff"])).rejects.toThrow(
+      "NOT_FOUND",
+    );
+  });
 });
 
 describe("requireDoor", () => {
