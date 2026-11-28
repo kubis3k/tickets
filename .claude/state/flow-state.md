@@ -6,14 +6,15 @@
 - cíl: fáze 0, PR fáze 0 (push do origin/phase-0, PR do main)
 - tier: T4
 - zóna (T4): peníze (lib/money, poplatky), přístupy (guardy, platform/org admin), migrace drizzle/0000–0001
-- status: `review` (pr-reviewer: REQUEST CHANGES jen kvůli zastaralému checkpointu; po aktualizaci checkpointu APPROVE bez dalšího kola)
+- status: `done` (PR #1 otevřen, čeká na merge člověkem)
 ## Checkpoint
-- fáze 0 hotová, čeká na push do origin/phase-0 a PR; merge dělá jen člověk; další: fáze 1 (docs/phases/PHASE_1.md zatím neexistuje)
+- fáze 0 hotová v PR #1 (https://github.com/kubis3k/tickets/pull/1, head `phase-0`), čeká na merge člověkem (Luigi po proklikání Vercel preview); další: fáze 1 (docs/phases/PHASE_1.md zatím neexistuje)
+- popis PR: docs/phases/PHASE_0_PR.md; pr-reviewer APPROVE (doporučení aplikována v 5996887)
 - poslední dokončený krok: úkol 8 (seed + e2e + README) po opravách 0c01c47; tester e3d5a9e (test/static/audit-coverage.test.ts, test/static/env-contract.test.ts, testy guardů actions, docs/phases/PHASE_0_TEST.md); 19 commitů v `git log --oneline main..HEAD`, poslední 0c01c47; 512 testů zelených
 - audity: úkol 6 security APPROVE + money po opravách (strop fee_fixed 1000 Kč, plátce DPH vyžaduje DIČ); úkol 7 security APPROVE (dcad2df); úkol 8 security po opravách (redirect URL bez *.vercel.app, náhodné heslo v e2e, e2e jen proti localhostu)
 - pr-reviewer: kód schválen, drobná doporučení se právě aplikují (ověř `git status` a zacommituj je do fáze 0)
 - nezacommitované mimo fázi 0 (nepatří do PR, necommitovat s ním): `.claude/hooks/token_tracker.py`, `tools/flow-dash.py`
-- další krok: (1) `git status` čistý vůči fázi a `pnpm lint && pnpm typecheck && pnpm test` zelené; (2) `git push origin HEAD:phase-0`; (3) PR do `main`: popis, scénář pro člověka (docs/phases/PHASE_0_TEST.md), verdikt pr-reviewer, odložené věci; (4) nemergovat, nepushovat do `main`
+- další krok: čekat na merge PR #1 člověkem; případné připomínky z review opravit přes flow na branch `phase-0`; po merge začít fázi 1 (`/phase 1`, nejdřív musí existovat docs/phases/PHASE_1.md). Nemergovat, nepushovat do `main`.
 ## Plán (aktivní)
 1. [x] Scaffold (T2): Next/TS strict/Tailwind/shadcn/ESLint/Prettier/Vitest/Playwright, brand.ts, i18n/cs.ts, env.ts (Zod), .env.example, CI
 2. [x] Schéma DB (T4 sec+money): lib/db/schema/* dle SPEC §5 + invitations, door_assignments, invoice_sequences, jobs; drizzle/0000; PGlite test
