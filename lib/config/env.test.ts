@@ -35,6 +35,26 @@ describe("getServerEnv", () => {
     expect(() => getServerEnv(rest)).toThrow(/RESEND_API_KEY/);
   });
 
+  it("EMAIL_DRIVER=outbox nevyžaduje RESEND_API_KEY ani EMAIL_FROM", () => {
+    const { RESEND_API_KEY: _a, EMAIL_FROM: _b, ...rest } = validServer;
+    void _a;
+    void _b;
+    expect(getServerEnv({ ...rest, EMAIL_DRIVER: "outbox" }).EMAIL_DRIVER).toBe("outbox");
+  });
+
+  it("EMAIL_DRIVER=resend vyžaduje EMAIL_FROM (hláška jen s názvem)", () => {
+    const { EMAIL_FROM: _b, ...rest } = validServer;
+    void _b;
+    try {
+      getServerEnv({ ...rest, EMAIL_DRIVER: "resend" });
+      expect.unreachable();
+    } catch (e) {
+      const msg = (e as Error).message;
+      expect(msg).toContain("EMAIL_FROM");
+      expect(msg).not.toContain("re_secret");
+    }
+  });
+
   it("nevalidní proměnná -> chyba s názvem, bez hodnoty", () => {
     const bad = { ...validServer, PLATFORM_ADMIN_EMAIL: "not-an-email-SECRETVALUE" };
     try {

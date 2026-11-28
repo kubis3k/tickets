@@ -24,7 +24,7 @@ Next.js (App Router) · TypeScript strict · Supabase (Postgres + Auth) · Drizz
 ```
 pnpm install
 cp .env.example .env.local     # doplň hodnoty, soubor NIKDY necommituj
-pnpm db:migrate                # schéma + RLS do Supabase (viz Migrace)
+pnpm db:migrate                # schéma + RLS do Supabase (viz Migrace; nejdřív ověř, že schéma `public` je prázdné)
 pnpm db:seed                   # platform admin + organizace 3Lwave (viz Seed)
 pnpm dev                       # http://localhost:3000
 ```
@@ -73,6 +73,8 @@ Hodnoty patří jen do `.env.local` a do Vercelu. Validace (Zod) běží při st
 
 ## Migrace
 
+Před prvním `pnpm db:migrate` ověř, že schéma `public` v Supabase je prázdné (žádné tabulky z dřívějška). Migrace 0001 jinak skončí chybou kontroly RLS.
+
 ```
 pnpm db:migrate     # drizzle-kit migrate, používá DIRECT_URL
 pnpm db:check       # konzistence migrací (běží i v CI)
@@ -101,7 +103,8 @@ Spouští se přes `tsx --conditions=react-server` (kvůli importu `server-only`
 ## Vercel
 
 - Nastav všechny proměnné z tabulky pro **Production i Preview** (`E2E_*` a `SKIP_ENV_VALIDATION` ne). `EMAIL_DRIVER` nenastavuj (výchozí `resend`); `outbox` je v produkci zakázán.
-- `NEXT_PUBLIC_APP_URL` pro Preview musí odpovídat adrese preview, jinak budou odkazy v e-mailech mířit jinam.
+- `NEXT_PUBLIC_APP_URL` se zapéká při buildu. Pro preview větve `phase-0` nastav env „Preview (branch phase-0)" na alias `https://<projekt>-git-phase-0-<team>.vercel.app` PŘED buildem a ten alias přidej do Supabase Redirect URLs. Jinak budou odkazy v e-mailech mířit jinam.
+- Preview validuje env při startu: chybějící proměnná = pád aplikace.
 - Preview zatím sdílí Supabase DB s produkcí (viz DECISIONS).
 - Merge do `main` dělá jen člověk po proklikání preview.
 
@@ -111,9 +114,10 @@ Spouští se přes `tsx --conditions=react-server` (kvůli importu `server-only`
 - **E2E (Playwright):** jen lokálně, v CI neběží.
   1. `.env.local` má vyplněné Supabase proměnné, `PLATFORM_ADMIN_EMAIL` a `SEED_ADMIN_PASSWORD` (nebo `E2E_ADMIN_EMAIL` + `E2E_ADMIN_PASSWORD`), admin existuje s heslem (seed).
   2. `E2E=1 pnpm e2e` (PowerShell: `$env:E2E=1; pnpm e2e`). Playwright sám spustí `pnpm dev` s `EMAIL_DRIVER=outbox`; e-maily skončí v `.e2e-outbox/` (není v gitu).
-  3. Pokud už dev server běží, musí běžet s `EMAIL_DRIVER=outbox`, jinak test e-mail s pozvánkou nenajde (a odešel by skutečný e-mail).
-  4. Test `e2e/invite-flow.spec.ts`: admin založí organizaci → pozve ownera (`e2e+<čas>@example.com`) → odkaz z outboxu → owner v čistém prohlížeči nastaví heslo a vidí svou organizaci → `/admin/3lwave` vrátí 404.
-  5. **E2E spouštěj jen proti lokálnímu/testovacímu Supabase projektu, nikdy proti produkci.** `NEXT_PUBLIC_APP_URL` v prostředí testu musí být localhost, jinak test selže ještě před během. Port lze změnit přes `E2E_PORT` (výchozí 3000).
+  3. S `EMAIL_DRIVER=outbox` (nastavuje ho Playwright) není potřeba `RESEND_API_KEY` ani `EMAIL_FROM`.
+  4. Pokud už dev server běží, musí běžet s `EMAIL_DRIVER=outbox`, jinak test e-mail s pozvánkou nenajde (a odešel by skutečný e-mail).
+  5. Test `e2e/invite-flow.spec.ts`: admin založí organizaci → pozve ownera (`e2e+<čas>@example.com`) → odkaz z outboxu → owner v čistém prohlížeči nastaví heslo a vidí svou organizaci → `/admin/3lwave` vrátí 404.
+  6. **E2E spouštěj jen proti lokálnímu/testovacímu Supabase projektu, nikdy proti produkci.** `NEXT_PUBLIC_APP_URL` v prostředí testu musí být localhost, jinak test selže ještě před během. Port lze změnit přes `E2E_PORT` (výchozí 3000).
   6. **Úklid se nedělá** (service role klíč smí být jen v `env.ts` a `supabase-admin.ts`). Po každém běhu zůstává: organizace se slugem `e2e-<čas>`, uživatel `e2e+<čas>@example.com` (auth účet i řádek `users`), členství a audit. Smaž je ručně: organizaci v Platform adminu nebo SQL (`delete from organizations where slug like 'e2e-%'`, navázané řádky podle FK), uživatele v Supabase → Authentication → Users (filtr `e2e+`) a řádky `users` s tímto e-mailem. Heslo ownera je náhodné a nikde se neukládá.
 
 ## Struktura repa
