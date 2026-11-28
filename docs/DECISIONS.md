@@ -37,6 +37,17 @@
 - [2026-11-27] [F0] Opakované pozvání nahradí aktivní pozvánku (stará revoke „superseded"); přijetí nepřepisuje existující roli
 - [2026-11-27] [F0] Session bez users řádku povolena jen při next=/invite/… (přijetí pozvánky existujícím auth účtem); admin guardy users řádek vyžadují
 - [2026-11-27] [F0] `@react-email/components` je deprecated — zvážit `react-email` později
+- [2026-11-28] [F0] Slug organizace je po založení neměnný
+- [2026-11-28] [F0] Invariant „≥1 owner" je hlídaný přes SELECT … FOR UPDATE nad memberships
+- [2026-11-28] [F0] Formuláře zadávají Kč a procenta jako text a parsuje je lib/money bez float
+- [2026-11-28] [F0] Fixní provize má strop 1000 Kč. Plátce DPH musí mít DIČ
+- [2026-11-28] [F0] Owner smí měnit zobrazovaný název, fakturační adresu a branding. IČO, DIČ, legal_name, vat_payer, invoice_prefix, poplatky, payout_delay_days a meta_pixel_id mění jen platform admin
+- [2026-11-28] [F0] Přepínač organizací ukazuje jen role owner a staff
+- [2026-11-28] [F0] Seed je idempotentní a data nepřepisuje. Admin není členem 3Lwave. Adresa 3Lwave je placeholder
+- [2026-11-28] [F0] Seed běží s `--conditions=react-server` a s kompletním env
+- [2026-11-28] [F0] E2E jen proti localhostu a testovacímu Supabase, bez úklidu
+- [2026-11-28] [F0] Šablona magic linku `{{ .RedirectTo }}&token_hash=…&type=email`. Redirect URLs jen localhost, produkce a team-scoped preview, nikdy `*.vercel.app`
+- [2026-11-28] [F0] `RESEND_API_KEY` a `EMAIL_FROM` jsou povinné jen pro driver resend
 
 # Odloženo
 - [po v1] box office, virtuální fronta, sedadla, Wallet passy, BilanxFlow napojení, EN jazyk

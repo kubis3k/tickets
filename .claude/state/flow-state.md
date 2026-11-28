@@ -3,35 +3,39 @@
 - fáze: 0
 - branch: worktree `claude/globaalticket-orchestration-85a806` → push do `origin/phase-0` (lokální phase-0 drží jiný worktree)
 ## Aktuální úkol
-- cíl: fáze 0, úkol 6 Platform admin
+- cíl: fáze 0, PR fáze 0 (push do origin/phase-0, PR do main)
 - tier: T4
-- zóna (T4): peníze (lib/money) + přístupy (guardy, admin)
-- status: přerušen limitem API; coder pokračuje; NECOMMITNUTO
+- zóna (T4): peníze (lib/money, poplatky), přístupy (guardy, platform/org admin), migrace drizzle/0000–0001
+- status: `review` (pr-reviewer: REQUEST CHANGES jen kvůli zastaralému checkpointu; po aktualizaci checkpointu APPROVE bez dalšího kola)
 ## Checkpoint
-- poslední dokončený krok: úkol 5 (audit + e-mail + pozvánky) hotový, security OK; opravy 34aecf8 (přijetí pozvánky s auth účtem bez users řádku, cleanup při chybě, requireAuthSession); předtím 0e79158, 852cb16, 3d1f2c4, 7f0ac74. Testy: 343 zelených.
-- rozpracovaný soubor + řádek: úkol 6, nezacommitováno: `app/(admin)/admin/platform/**`, `components/platform/**`, `lib/orgs/**`, `lib/money/**`, `lib/validation/org.ts`. Řádek nebyl předán: před pokračováním spustit `git status` a `git diff --stat`, dokončit rozpracované soubory a ověřit `pnpm lint && pnpm typecheck && pnpm test`.
-- nesouvisející nezacommitované změny (nepatří do úkolu 6, necommitovat s ním): `.claude/hooks/token_tracker.py`, `tools/flow-dash.py`, `lib/i18n/cs.ts`
-- další krok: dokončit úkol 6 (coder) → commit → audit úkolu 6 (security-auditor + money-auditor) → úkol 7 Org admin (včetně zpevnění `isInviteNext` v `app/auth/confirm/verify/route.ts` přes normalizaci URL + test výjimky)
+- fáze 0 hotová, čeká na push do origin/phase-0 a PR; merge dělá jen člověk; další: fáze 1 (docs/phases/PHASE_1.md zatím neexistuje)
+- poslední dokončený krok: úkol 8 (seed + e2e + README) po opravách 0c01c47; tester e3d5a9e (test/static/audit-coverage.test.ts, test/static/env-contract.test.ts, testy guardů actions, docs/phases/PHASE_0_TEST.md); 19 commitů v `git log --oneline main..HEAD`, poslední 0c01c47; 512 testů zelených
+- audity: úkol 6 security APPROVE + money po opravách (strop fee_fixed 1000 Kč, plátce DPH vyžaduje DIČ); úkol 7 security APPROVE (dcad2df); úkol 8 security po opravách (redirect URL bez *.vercel.app, náhodné heslo v e2e, e2e jen proti localhostu)
+- pr-reviewer: kód schválen, drobná doporučení se právě aplikují (ověř `git status` a zacommituj je do fáze 0)
+- nezacommitované mimo fázi 0 (nepatří do PR, necommitovat s ním): `.claude/hooks/token_tracker.py`, `tools/flow-dash.py`
+- další krok: (1) `git status` čistý vůči fázi a `pnpm lint && pnpm typecheck && pnpm test` zelené; (2) `git push origin HEAD:phase-0`; (3) PR do `main`: popis, scénář pro člověka (docs/phases/PHASE_0_TEST.md), verdikt pr-reviewer, odložené věci; (4) nemergovat, nepushovat do `main`
 ## Plán (aktivní)
-1. [x] Scaffold (T2): Next/TS strict/Tailwind/shadcn/ESLint/Prettier/Vitest/Playwright, route groups, brand.ts, i18n/cs.ts, env.ts (Zod) + instrumentation, .env.example, CI
-2. [x] Schéma DB (T4 sec+money): lib/db/schema/* vše ze SPEC §5 + invitations, door_assignments, invoice_sequences, jobs; drizzle/0000; PGlite test
-3. [x] RLS (T4 sec): drizzle/0001_rls.sql custom, app.is_platform_admin/is_org_member, test/sql/auth-stub.sql, PGlite asUser
-4. [x] Auth jádro (T4 sec): lib/auth/supabase-*, session, guards, proxy/middleware, /login, /auth/callback, AST test guard-first
-5. [x] Audit + e-mail + pozvánky (T4 sec): lib/audit/record.ts, lib/email (resend|outbox), lib/invitations, app/invite/[token]
-6. [~] Platform admin (T4 sec+money): app/(admin)/admin/platform/**, lib/orgs, lib/validation/org.ts (rozpracováno, necommit)
-7. [ ] Org admin (T4 sec): app/(admin)/admin/[orgSlug]/** + přepínač, members, last-owner invariant
-8. [ ] Seed + e2e + README (T4 sec): scripts/seed.ts idempotentní, e2e/invite-flow.spec.ts (outbox), README
+1. [x] Scaffold (T2): Next/TS strict/Tailwind/shadcn/ESLint/Prettier/Vitest/Playwright, brand.ts, i18n/cs.ts, env.ts (Zod), .env.example, CI
+2. [x] Schéma DB (T4 sec+money): lib/db/schema/* dle SPEC §5 + invitations, door_assignments, invoice_sequences, jobs; drizzle/0000; PGlite test
+3. [x] RLS (T4 sec): drizzle/0001_rls.sql, app.is_platform_admin/is_org_member, asUser testy
+4. [x] Auth jádro (T4 sec): lib/auth/*, proxy.ts, /login, /auth/callback, AST test guard-first
+5. [x] Audit + e-mail + pozvánky (T4 sec): lib/audit/record.ts, lib/email, lib/invitations, app/invite/[token]
+6. [x] Platform admin (T4 sec+money): app/(admin)/admin/platform/**, lib/orgs/*, lib/money/{parse,format}, lib/validation/org.ts
+7. [x] Org admin (T4 sec): app/(admin)/admin/[orgSlug]/**, přepínač organizací, members, last-owner invariant
+8. [x] Seed + e2e + README (T4 sec): scripts/seed.ts + lib/seed/* idempotentní, e2e/invite-flow.spec.ts (outbox), README
+9. [ ] PR fáze 0: push origin/phase-0, popis, scénář pro člověka, review APPROVE; merge jen člověk
 ## Invarianty (aktivní)
 - každá tabulka public má RLS; anon 0 řádků; člen A nevidí B
-- server action / route handler: první příkaz require*, druhý Zod
+- server action / route handler: první řádek require*, druhý Zod
 - účet bez řádku v users neprojde guardem; ne-člen → notFound
 - pozvánka: jen hash tokenu, 7 dní, souběžný accept = 1 úspěch
-- org má vždy ≥1 ownera; admin mutace = 1 audit řádek ve stejné tx
+- org má vždy ≥1 ownera (SELECT … FOR UPDATE nad memberships); admin mutace = 1 audit řádek ve stejné tx
 - žádné auth.signUp, OTP shouldCreateUser:false, service role jen v env.ts + supabase-admin.ts
 - peníze integer haléře, procenta integer bps
 ## Mapa poznání
 - docs/SPEC.md: závazná specifikace (§3 Stripe, §4 doklady, §5 schéma, §6 kapacita, §7 QR, §8 tracking, §9 role, §11 fáze, §12 workflow)
 - docs/phases/PHASE_0.md: zadání fáze 0 (scaffold, DB, auth, role, admin)
+- docs/phases/PHASE_0_TEST.md: testovací scénář fáze 0 pro člověka
 - CLAUDE.md: pravidla projektu a flow
 - prostředí: Node 24, pnpm 11, `gh` chybí, `python3` wrapper v ~/bin rozbitý (použij `py`)
 - lib/db/schema/* (9 souborů: index, enums, _helpers, auth, identity, events, orders, billing, system): 28 tabulek, složené FK (event_id, organization_id) → events(id, organization_id)
@@ -41,19 +45,36 @@
 - lib/auth/guards.ts: createGuards (DI); requireAuthenticated / requirePlatformAdmin / requireAnyMembership / requireOrgRole / requireOrgRoleBySlug / requireDoor / requireAuthSession
 - proxy.ts: Next 16, kontroluje jen přihlášení (role hlídá guard)
 - test/static/guard-first.test.ts: AST test guard-first, max 6 výjimek `// public:`
-- app/auth/confirm/verify/route.ts: POST potvrzení magic linku; `isInviteNext` k zpevnění v úkolu 7
+- test/static/audit-coverage.test.ts, env-contract.test.ts, no-signup.test.ts, no-secret-logging.test.ts, brand.test.ts: statické invarianty fáze 0
+- app/auth/confirm/verify/route.ts: POST potvrzení magic linku, Origin povinný
 - lib/invitations/* (tokens, create, accept, revoke, lookup, state, actions; invitations.test.ts): token_hash, atomický claim, 7 dní
 - lib/email/* (send.ts, types.ts, email.test.ts): transport resend | outbox
 - lib/audit/record.ts: zápis audit_log řádku (ve stejné tx jako mutace)
-- lib/money/ (untracked, úkol 6): zaokrouhlení a částky, jediné místo pro výpočty
+- lib/orgs/* (organizations, members, org-admin, form, state; testy): členství, FOR UPDATE invariant ownera
+- lib/money/{parse,format}.ts: parsování Kč a procent bez float, formátování; zaokrouhlení jen v lib/money
+- lib/validation/org.ts: Zod schémata organizací (strop fee_fixed 1000 Kč)
+- app/(admin)/admin/platform/** + components/platform/*: platform admin (úkol 6)
+- app/(admin)/admin/[orgSlug]/** : org admin, nastavení, členové, přepínač organizací (úkol 7)
+- lib/seed/* + scripts/seed.ts: idempotentní seed, běží s `--conditions=react-server`
+- e2e/invite-flow.spec.ts: e2e pozvánky přes outbox, jen localhost a testovací Supabase
 ## Hotové úkoly
 - [2026-11-26] příprava repozitáře → hotovo
 - [2026-11-27] rozpad fáze 0 (architect) → plán 8 úkolů
 - [2026-11-27] úkol 1 Scaffold → hotovo (commity v rozsahu 871bf9b..34aecf8)
 - [2026-11-27] úkol 2 Schéma DB → 2 kola audit money + security OK (commity v rozsahu 871bf9b..34aecf8)
 - [2026-11-27] úkol 3 RLS → APPROVE, opravy default ACL jen pro postgres (852cb16)
-- [2026-11-27] úkol 4 Auth jádro → proxy, guardy, login heslo + magic link, callback + /auth/confirm POST; opravy 3d1f2c4, 7f0ac74
-- [2026-11-27] úkol 5 Audit + e-mail + pozvánky → security OK; 0e79158, opravy 34aecf8
+- [2026-11-27] úkol 4 Auth jádro → proxy, guardy, login heslo + magic link, callback; opravy 3d1f2c4, 7f0ac74
+- [2026-11-27] úkol 5 Audit + e-mail + pozvánky → security OK (0e79158, opravy 34aecf8)
+- [2026-11-28] úkol 6 Platform admin → security APPROVE, money po opravách (strop fee_fixed 1000 Kč, plátce DPH vyžaduje DIČ) (commity viz `git log main..HEAD`)
+- [2026-11-28] úkol 7 Org admin → security APPROVE, přepínač, members, last-owner invariant (dcad2df)
+- [2026-11-28] úkol 8 Seed + e2e + README → security po opravách (redirect URL bez *.vercel.app, náhodné heslo v e2e, e2e jen localhost) (92a07b3, 0c01c47)
+- [2026-11-28] tester → audit-coverage, env-contract, testy guardů, PHASE_0_TEST.md; 512 testů zelených (e3d5a9e)
+- [2026-11-28] pr-reviewer → REQUEST CHANGES jen kvůli checkpointu; čeká na APPROVE po aktualizaci
 ## Otevřené otázky / blokery
 - finální název produktu (brand config), výše provize, refund policy, obchodní podmínky
-- úkol 6 přerušen limitem API: po obnovení ověřit stav rozpracovaných souborů (viz Checkpoint)
+- rizika pro fázi 1:
+  - globální REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC: nové SQL funkce potřebují explicitní GRANT
+  - každá nová tabulka potřebuje RLS (test to kontroluje)
+  - webhook Stripe bude potřebovat další výjimku `// public:` (limit 6 v guard-first testu)
+  - poplatky do application_fee jen přes lib/money
+  - Vercel preview a produkce sdílejí DB (oddělit až ve fázi 7)
